@@ -9,6 +9,7 @@ import { fill, formatCount, formatUpdated, messages, PRESET_EXCLUDE } from "../s
 import { PLATFORM_IDS, PLATFORMS, platformById } from "../shared/platforms";
 import { normalizeQuery } from "../shared/query";
 import type { PlatformId, SearchResponse, SortMode } from "../shared/types";
+import { bindClearButton } from "./clear-field";
 import { defaultPrefs, loadPrefs, savePrefs, type Prefs } from "./prefs";
 import { renderNotices, renderStage } from "./render";
 
@@ -22,7 +23,12 @@ let requestId = 0;
 const searchForm = document.querySelector<HTMLFormElement>("#search-form")!;
 const searchInput = document.querySelector<HTMLInputElement>("#q")!;
 const searchButton = searchForm.querySelector<HTMLButtonElement>(".sbtn")!;
+const syncSearchClear = bindClearButton(searchInput, document.querySelector<HTMLButtonElement>("#clear-q")!);
 const excludeInput = document.querySelector<HTMLInputElement>("#exclude-input")!;
+const syncExcludeClear = bindClearButton(
+  excludeInput,
+  document.querySelector<HTMLButtonElement>("#clear-exclude")!,
+);
 const presetButton = document.querySelector<HTMLButtonElement>("#preset")!;
 const platformRoot = document.querySelector<HTMLElement>("#platforms")!;
 const toolbar = document.querySelector<HTMLElement>("#toolbar")!;
@@ -191,6 +197,7 @@ function commitExclude(): void {
   prefs.exclude = addKeywords(prefs.exclude, incoming);
   prefs.preset = PRESET_EXCLUDE.every((word) => prefs.exclude.includes(word));
   excludeInput.value = "";
+  syncExcludeClear();
   savePrefs(prefs);
   syncExclude();
   render();
@@ -294,6 +301,7 @@ priceMaxInput.addEventListener("input", onPriceInput);
 window.addEventListener("popstate", () => {
   const next = new URLSearchParams(location.search).get("q") ?? "";
   searchInput.value = next;
+  syncSearchClear();
   if (normalizeQuery(next)) {
     void runSearch(next, false);
     return;
@@ -316,5 +324,6 @@ render();
 const initial = new URLSearchParams(location.search).get("q");
 if (initial && normalizeQuery(initial)) {
   searchInput.value = initial;
+  syncSearchClear();
   void runSearch(initial, false);
 }

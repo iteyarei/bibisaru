@@ -56,6 +56,11 @@
             <path d="M16 16.5 20 20.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
           </svg>
           <input id="q" name="q" type="search" enterkeyhint="search" maxlength="40" placeholder="想找什麼？例如：藍芽耳機" autocomplete="off" />
+          <button type="button" class="clear" id="clear-q" hidden aria-label="清除">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 7l10 10M17 7 7 17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+            </svg>
+          </button>
           <button class="sbtn" type="submit" aria-label="搜尋">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M5 12h12M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
@@ -69,6 +74,11 @@
         <span class="sr" id="exclude-label">排除關鍵字</span>
         <div class="chips" id="chips"></div>
         <input id="exclude-input" type="text" maxlength="20" placeholder="不想看到的字，例如：二手" autocomplete="off" aria-labelledby="exclude-label" />
+        <button type="button" class="clear" id="clear-exclude" hidden aria-label="清除">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 7l10 10M17 7 7 17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+          </svg>
+        </button>
         <button type="button" id="preset" aria-pressed="false">排除配件與二手</button>
       </div>
 
