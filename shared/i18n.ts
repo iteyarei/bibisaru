@@ -34,6 +34,7 @@ export const zhTW = {
   lowest: "✓ 最低價",
   lowestLabel: "最低價",
   buy: "前往購買",
+  similar: "搜尋同款",
   updatedJustNow: "剛剛更新",
   updatedMinutes: "約 {n} 分鐘前更新",
   empty: "找不到符合的商品，試試放寬價格、少一個排除字，或打開更多平台",
