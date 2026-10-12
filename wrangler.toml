@@ -2,4 +2,5 @@
 # No environment variables are required for v1.
 name = "bibisaru"
 compatibility_date = "2026-10-12"
+compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "dist"
