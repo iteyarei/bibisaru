@@ -53,7 +53,9 @@ npm run test:live
 
 同一組關鍵字與平台組合會在邊緣快取約 3 分鐘，瀏覽器再快取 30 秒。每個 IP 大約每分鐘 20 次未命中快取的搜尋。沒有重試。
 
-排除關鍵字、平台開關、排序都在瀏覽器裡做，並記在 `localStorage`（`bibisaru.prefs.v1`）。外連是 `target="_blank"`、`rel="noopener nofollow sponsored"`。
+排除關鍵字、平台開關、排序、價格範圍都在瀏覽器裡做，並記在 `localStorage`（`bibisaru.prefs.v1`）。價格範圍空白表示不限；若最低填得比最高高，會把兩個數字對調後再篩。外連是 `target="_blank"`、`rel="noopener nofollow sponsored"`。
+
+能判斷庫存的店，已售完的商品預設不列出：momo（`goodsStock` 為 0）、Yahoo（`ec_has_stock` 為 0 或庫存數為 0）、全聯（`is_sold_out` 或庫存為 0）、東森（`haveStocks` 為 false）、金石堂（按鈕是「貨到通知」）、三民（標成「無庫存」）。PChome 的搜尋 JSON 沒有庫存欄位，無法判斷，所以照頁面上的結果列出。酷澎、蝦皮、誠品目前多半是前往搜尋，沒有可判斷的庫存。
 
 ## 這台機器實測（2026-10-12）
 

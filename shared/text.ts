@@ -28,6 +28,26 @@ export function cleanTitle(value: string): string {
   return decodeHtml(value).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 180);
 }
 
+/**
+ * Inventory count when the storefront provides one.
+ * `null` means the field was missing or not a number, so stock is unknown.
+ * `0` means sold out.
+ */
+export function stockCount(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const amount = Math.trunc(value);
+    return amount >= 0 && amount < 100_000_000 ? amount : null;
+  }
+  if (typeof value !== "string" || !/^\d+$/.test(value.trim())) return null;
+  const amount = Number(value.trim());
+  return amount < 100_000_000 ? amount : null;
+}
+
+export function knownSoldOut(value: unknown): boolean {
+  const count = stockCount(value);
+  return count !== null && count <= 0;
+}
+
 /** TWD integer. Returns null for missing, zero, or non-numeric prices. */
 export function parsePrice(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) {

@@ -76,12 +76,21 @@
           <span class="num" id="count"></span>
           <span id="updated"></span>
         </div>
-        <label class="sr" for="sort">排序</label>
-        <select id="sort" class="sort">
-          <option value="price-asc">價格 低→高</option>
-          <option value="price-desc">價格 高→低</option>
-          <option value="relevance">相關度</option>
-        </select>
+        <div class="bar-right">
+          <label class="sr" for="sort">排序</label>
+          <select id="sort" class="sort">
+            <option value="price-asc">價格 低→高</option>
+            <option value="price-desc">價格 高→低</option>
+            <option value="relevance">相關度</option>
+          </select>
+          <div class="range" role="group" aria-label="價格範圍">
+            <input id="price-min" type="number" inputmode="numeric" min="0" step="1" placeholder="最低" aria-label="最低價格" />
+            <span>元</span>
+            <span class="tilde" aria-hidden="true">~</span>
+            <input id="price-max" type="number" inputmode="numeric" min="0" step="1" placeholder="最高" aria-label="最高價格" />
+            <span>元</span>
+          </div>
+        </div>
       </div>
       <div id="notices"></div>
       <div id="stage" aria-live="polite">

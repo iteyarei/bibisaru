@@ -1,6 +1,7 @@
 import {
   addKeywords,
   parseKeywordDraft,
+  parsePriceBound,
   prepareResults,
   removeKeywords,
 } from "../shared/filter";
@@ -28,6 +29,8 @@ const toolbar = document.querySelector<HTMLElement>("#toolbar")!;
 const countNode = document.querySelector<HTMLElement>("#count")!;
 const updatedNode = document.querySelector<HTMLElement>("#updated")!;
 const sortSelect = document.querySelector<HTMLSelectElement>("#sort")!;
+const priceMinInput = document.querySelector<HTMLInputElement>("#price-min")!;
+const priceMaxInput = document.querySelector<HTMLInputElement>("#price-max")!;
 const noticeRoot = document.querySelector<HTMLElement>("#notices")!;
 const stage = document.querySelector<HTMLElement>("#stage")!;
 
@@ -42,6 +45,8 @@ function visibleProducts() {
     platforms: enabledIds(),
     sort: prefs.sort,
     query,
+    priceMin: prefs.priceMin,
+    priceMax: prefs.priceMax,
   });
 }
 
@@ -88,6 +93,8 @@ function render(): void {
     if (document.activeElement !== sortSelect && sortSelect.value !== prefs.sort) {
       sortSelect.value = prefs.sort;
     }
+    syncPriceInput(priceMinInput, prefs.priceMin);
+    syncPriceInput(priceMaxInput, prefs.priceMax);
   }
   const notices =
     response && !loading
@@ -107,6 +114,12 @@ function render(): void {
     onReset: resetFilters,
   });
   searchButton.setAttribute("aria-busy", loading ? "true" : "false");
+}
+
+function syncPriceInput(input: HTMLInputElement, bound: number | null): void {
+  if (document.activeElement === input) return;
+  const next = bound === null ? "" : String(bound);
+  if (input.value !== next) input.value = next;
 }
 
 function renderPlatforms(): void {
@@ -190,10 +203,14 @@ function resetFilters(): void {
   prefs.preset = false;
   prefs.sort = fresh.sort;
   prefs.platforms = fresh.platforms;
+  prefs.priceMin = null;
+  prefs.priceMax = null;
   savePrefs(prefs);
   syncExclude();
   syncPlatforms();
   sortSelect.value = prefs.sort;
+  priceMinInput.value = "";
+  priceMaxInput.value = "";
   if (query && enabledIds().join(",") !== before) void runSearch(query, false);
   else render();
 }
@@ -264,6 +281,16 @@ sortSelect.addEventListener("change", () => {
   render();
 });
 
+function onPriceInput(): void {
+  prefs.priceMin = parsePriceBound(priceMinInput.value);
+  prefs.priceMax = parsePriceBound(priceMaxInput.value);
+  savePrefs(prefs);
+  render();
+}
+
+priceMinInput.addEventListener("input", onPriceInput);
+priceMaxInput.addEventListener("input", onPriceInput);
+
 window.addEventListener("popstate", () => {
   const next = new URLSearchParams(location.search).get("q") ?? "";
   searchInput.value = next;
@@ -282,6 +309,8 @@ window.addEventListener("popstate", () => {
 renderPlatforms();
 syncExclude();
 sortSelect.value = prefs.sort;
+priceMinInput.value = prefs.priceMin === null ? "" : String(prefs.priceMin);
+priceMaxInput.value = prefs.priceMax === null ? "" : String(prefs.priceMax);
 render();
 
 const initial = new URLSearchParams(location.search).get("q");

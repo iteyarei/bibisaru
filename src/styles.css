@@ -249,6 +249,7 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin: 16px 0 8px;
   color: var(--muted);
@@ -256,16 +257,52 @@ header {
 }
 
 .bar-left { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.bar-right {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+}
 .num { font-variant-numeric: tabular-nums; }
 
-.sort {
+.sort, .range input {
+  height: 34px;
+  box-sizing: border-box;
   border: 1px solid var(--line);
   background: #fff;
   border-radius: 8px;
-  padding: 6px 10px;
+  padding: 0 10px;
   font-weight: 600;
   font-size: 13px;
+  color: var(--ink);
 }
+
+.range {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.range input {
+  width: 4.8em;
+  padding: 0 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.range input::placeholder { color: #a1a1aa; font-weight: 500; }
+
+.range input::-webkit-outer-spin-button,
+.range input::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+.range input { appearance: textfield; }
 
 .notice {
   display: flex;
