@@ -8,6 +8,7 @@ import {
   decodeHtml,
   jsUnescape,
   knownSoldOut,
+  normalizeMatchText,
   parseJsonArrayPrefix,
   parsePrice,
 } from "./text";
@@ -53,6 +54,24 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
+/**
+ * PChome's `name` often drops the brand that the first describe line still has,
+ * for example name "Galaxy Z Fold8 (12G/512G)" and describe "Samsung Galaxy Z Fold8 (12G/512G)".
+ * Use that line only when it is the same name plus a short prefix, so a long sales blurb stays out of the title.
+ */
+function pchomeTitle(name: unknown, describe: unknown): string {
+  const short = cleanTitle(String(name ?? ""));
+  // PChome puts a literal "\r\n" at the end of describe, not a real line break.
+  const raw = String(describe ?? "").replace(/\\r\\n|\\n|\\r/g, "\n");
+  const line = cleanTitle(raw.split(/\r?\n/, 1)[0] ?? "");
+  if (!short) return line;
+  if (!line) return short;
+  const foldedShort = normalizeMatchText(short);
+  const foldedLine = normalizeMatchText(line);
+  if (foldedShort && foldedLine.includes(foldedShort) && line.length <= short.length + 24) return line;
+  return short;
+}
+
 export function normalizePchome(data: unknown): Product[] {
   const prods = asRecord(data)?.prods;
   if (!Array.isArray(prods)) return [];
@@ -68,7 +87,7 @@ export function normalizePchome(data: unknown): Product[] {
           ? `https://img.pchome.com.tw/cs${pic.startsWith("/") ? "" : "/"}${pic}`
           : "";
       return {
-        title: String(row.name ?? ""),
+        title: pchomeTitle(row.name, row.describe),
         price: parsePrice(row.price),
         image,
         url: id ? `https://24h.pchome.com.tw/prod/${encodeURIComponent(id)}` : "",

@@ -59,6 +59,15 @@ describe("and match with synonyms", () => {
     expect(titleHasEveryTerm("Switch 主機", "ns2")).toBe(false);
   });
 
+  it("ignores spaces and symbols inside a mixed letter-and-number word", () => {
+    expect(titleHasEveryTerm("Samsung Galaxy Z Fold 8 512GB", "samsung fold8 512")).toBe(true);
+    expect(titleHasEveryTerm("SAMSUNG Galaxy Z Fold-8 512 GB", "fold8 512gb")).toBe(true);
+    expect(titleHasEveryTerm("iPhone 15", "iphone15")).toBe(true);
+    expect(titleHasEveryTerm("iPhone15", "iphone 15")).toBe(true);
+    expect(titleHasEveryTerm("Galaxy Z Fold 8 256GB", "samsung fold8 512")).toBe(false);
+    expect(titleHasEveryTerm("Galaxy Z Fold8 (12G/512G)", "samsung fold8 512")).toBe(false);
+  });
+
   it("recomputes the lowest price after dropping titles that miss a word", () => {
     const visible = prepareResults(
       [item("鬼武者", 500), item("鬼武者 Switch 2", 1800), item("鬼武者 NS2", 2400)],
