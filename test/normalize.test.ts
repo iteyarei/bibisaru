@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AFFILIATE_ENABLED, applyAffiliate } from "../shared/affiliate";
+import { filterBySearchTerms } from "../shared/filter";
 import {
   kingstoneProducts,
   normalizeCoupang,
@@ -60,12 +61,28 @@ describe("normalizePchome", () => {
       },
       { Id: "ADULT-1", name: "限制級", price: 999, picB: "/items/a.jpg", isNC17: 1 },
       { Id: "FREE-1", name: "詢價", price: 0, picB: "/items/b.jpg", isNC17: 0 },
+      {
+        Id: "DYALS9-A900K9ONE",
+        name: "Galaxy Z Fold8 (12G/512G)",
+        describe: "Samsung Galaxy Z Fold8 (12G/512G)\\r\\n",
+        price: 57900,
+        picB: "/items/DYALS9A900K9ONE/000001.jpg",
+        isNC17: 0,
+      },
+      {
+        Id: "LONG-1",
+        name: "Go POP +真無線藍牙耳機",
+        describe: "CP值再升級 !美國 100美元以下耳機銷售冠軍JLab Go POP +真無線藍牙耳機\r\n單次電力8H+",
+        price: 799,
+        picB: "/items/long.jpg",
+        isNC17: 0,
+      },
     ],
   };
 
   it("keeps priced general goods and builds a PChome url", () => {
     const products = normalizePchome(data);
-    expect(products).toHaveLength(1);
+    expect(products).toHaveLength(3);
     expect(products[0]).toMatchObject({
       platform: "pchome",
       title: "無線藍牙耳機",
@@ -74,6 +91,11 @@ describe("normalizePchome", () => {
       url: "https://24h.pchome.com.tw/prod/DYAQ9M-A900G43N8",
       rank: 0,
     });
+    expect(products[1]?.title).toBe("Samsung Galaxy Z Fold8 (12G/512G)");
+    expect(products[2]?.title).toBe("Go POP +真無線藍牙耳機");
+    expect(filterBySearchTerms(products, "samsung fold8 512").map((product) => product.title)).toEqual([
+      "Samsung Galaxy Z Fold8 (12G/512G)",
+    ]);
   });
 });
 

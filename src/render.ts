@@ -55,6 +55,7 @@ export function renderStage(
     filtersHidResults: boolean;
     nothingFetched: boolean;
     onReset: () => void;
+    onSimilar: (title: string) => void;
   },
 ): void {
   root.replaceChildren();
@@ -108,15 +109,16 @@ export function renderStage(
   }
 
   const list = el("div", "results");
-  for (const product of view.products) list.append(productCard(product));
+  for (const product of view.products) list.append(productCard(product, view.onSimilar));
   root.append(list);
 }
 
-function productCard(product: ShownProduct): HTMLAnchorElement {
+function productCard(product: ShownProduct, onSimilar: (title: string) => void): HTMLElement {
   const platform = platformById(product.platform);
-  const card = outbound(product.url, product.lowest ? "item best" : "item", "");
+  const card = el("article", product.lowest ? "item best" : "item");
   card.style.setProperty("--c", platform.color);
-  card.setAttribute(
+  const hit = outbound(product.url, "hit", "");
+  hit.setAttribute(
     "aria-label",
     fill(messages.openProduct, {
       lowest: product.lowest ? `${messages.lowestLabel}，` : "",
@@ -136,9 +138,9 @@ function productCard(product: ShownProduct): HTMLAnchorElement {
     image.decoding = "async";
     image.referrerPolicy = "no-referrer";
     image.addEventListener("error", () => image.replaceWith(el("div", "ph")));
-    card.append(image);
+    hit.append(image);
   } else {
-    card.append(el("div", "ph"));
+    hit.append(el("div", "ph"));
   }
 
   const info = el("div", "info");
@@ -148,8 +150,16 @@ function productCard(product: ShownProduct): HTMLAnchorElement {
   const row = el("div", "row");
   const meta = el("div");
   meta.append(el("div", "price", formatPrice(product.price)), el("span", "tag", platform.name));
-  row.append(meta, el("span", "go", `${messages.buy} ↗`));
+  row.append(meta);
   info.append(row);
-  card.append(info);
+  hit.append(info);
+
+  const actions = el("div", "actions");
+  const buy = outbound(product.url, "go", messages.buy);
+  const similar = el("button", "same", messages.similar);
+  similar.type = "button";
+  similar.addEventListener("click", () => onSimilar(product.title));
+  actions.append(buy, similar);
+  card.append(hit, actions);
   return card;
 }

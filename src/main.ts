@@ -8,6 +8,7 @@ import {
 import { fill, formatCount, formatUpdated, messages, PRESET_EXCLUDE } from "../shared/i18n";
 import { PLATFORM_IDS, PLATFORMS, platformById } from "../shared/platforms";
 import { normalizeQuery } from "../shared/query";
+import { similarQuery } from "../shared/similar";
 import type { PlatformId, SearchResponse, SortMode } from "../shared/types";
 import { bindClearButton } from "./clear-field";
 import { defaultPrefs, loadPrefs, savePrefs, type Prefs } from "./prefs";
@@ -118,6 +119,7 @@ function render(): void {
     filtersHidResults,
     nothingFetched,
     onReset: resetFilters,
+    onSimilar: searchSimilar,
   });
   searchButton.setAttribute("aria-busy", loading ? "true" : "false");
 }
@@ -220,6 +222,18 @@ function resetFilters(): void {
   priceMaxInput.value = "";
   if (query && enabledIds().join(",") !== before) void runSearch(query, false);
   else render();
+}
+
+function searchSimilar(title: string): void {
+  const next = normalizeQuery(similarQuery(title));
+  if (!next) return;
+  for (const id of PLATFORM_IDS) prefs.platforms[id] = true;
+  savePrefs(prefs);
+  syncPlatforms();
+  searchInput.value = next;
+  syncSearchClear();
+  window.scrollTo(0, 0);
+  void runSearch(next, true);
 }
 
 searchForm.addEventListener("submit", (event) => {

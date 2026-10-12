@@ -15,6 +15,11 @@ function norm(value: string): string {
   return normalizeMatchText(value).replace(/\s+/g, " ").trim();
 }
 
+/** Letters and digits only, so "fold8" matches "Fold 8" and "512GB" matches "512 GB". */
+function compact(value: string): string {
+  return norm(value).replace(/[^\p{L}\p{N}]+/gu, "");
+}
+
 const GROUP_KEYS: readonly { forms: readonly string[] }[] = SYNONYM_GROUPS.map((group) => ({
   forms: [...new Set(group.map(norm).filter(Boolean))],
 }));
@@ -55,9 +60,16 @@ export function tokenForms(token: string): string[] {
   return forms ? [...forms] : [norm(token)].filter(Boolean);
 }
 
+function formInTitle(title: string, compactTitle: string, form: string): boolean {
+  const folded = compact(form);
+  if (folded) return compactTitle.includes(folded);
+  const plain = norm(form);
+  return plain.length > 0 && norm(title).includes(plain);
+}
+
 export function titleHasEveryTerm(title: string, query: string): boolean {
   const tokens = searchTokens(query);
   if (!tokens.length) return true;
-  const haystack = norm(title);
-  return tokens.every((token) => tokenForms(token).some((form) => haystack.includes(form)));
+  const compactTitle = compact(title);
+  return tokens.every((token) => tokenForms(token).some((form) => formInTitle(title, compactTitle, form)));
 }
