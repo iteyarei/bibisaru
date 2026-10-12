@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AFFILIATE_ENABLED, applyAffiliate } from "../shared/affiliate";
+import { AFFILIATE_ENABLED, applyAffiliate, shopeeAffiliateUrl } from "../shared/affiliate";
 import { filterBySearchTerms } from "../shared/filter";
 import {
   kingstoneProducts,
@@ -210,7 +210,7 @@ describe("normalizeShopee", () => {
       title: "藍牙耳機",
       price: 1290,
       image: "https://down-tw.img.susercontent.com/file/tw-11134207-example",
-      url: "https://shopee.tw/-i.7.42",
+      url: shopeeAffiliateUrl("https://shopee.tw/-i.7.42"),
     });
   });
 

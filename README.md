@@ -90,7 +90,7 @@ npm run test:live
 
 ## 風險
 
-- 這些平台的使用條款多半不允許自動抓搜尋結果。這一版量很小、有快取、沒有聯盟參數，但仍可能違反對方條款，也可能隨時被擋。
+- 這些平台的使用條款多半不允許自動抓搜尋結果。這一版量很小、有快取。蝦皮的外出連結走官方分潤轉址，其他店沒有聯盟參數。仍可能違反對方條款，也可能隨時被擋。
 - momo、Yahoo、酷澎是解析網頁，版面一改就會變成「暫時無法取得」。PChome 走 JSON，相對穩，但也沒有正式對外匯的保證。
 - 比的是每一家搜尋結果的前一頁，不是該站全部商品。最低價指的是這一批裡面最便宜的。
 - 有些平台會把推薦商品混進搜尋結果，標價仍是該頁上的價格。
@@ -107,4 +107,4 @@ npm run test:live
 
 介面文字集中在 `shared/i18n.ts`，目前只有繁體中文。
 
-聯盟參數只准加在 `shared/affiliate.ts` 的 `applyAffiliate`。`AFFILIATE_ENABLED` 必須維持 `false`，乾淨版才不會改寫任何外出網址。單元測試會鎖住這個開關。
+聯盟參數只准加在 `shared/affiliate.ts` 的 `applyAffiliate`。`AFFILIATE_ENABLED` 必須維持 `false`，除了蝦皮以外的外出網址不會被改寫。蝦皮商品與「前往搜尋」連結會改成 `https://s.shopee.tw/an_redir`，`affiliate_id` 預設 `16330620037`，可用環境變數 `SHOPEE_AFFILIATE_ID` 覆寫，`sub_id` 是 `bibisaru`。單元測試會鎖住這個開關。
