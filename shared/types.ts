@@ -1,0 +1,39 @@
+export type PlatformId = "momo" | "pchome" | "coupang" | "yahoo" | "shopee";
+
+export type SortMode = "price-asc" | "price-desc" | "relevance";
+
+export type PlatformStatus = "ok" | "empty" | "unavailable";
+
+/** One normalized listing. Price is an integer number of TWD. */
+export interface Product {
+  platform: PlatformId;
+  title: string;
+  price: number;
+  image: string;
+  url: string;
+  /** Position in that platform's own result list. Lower is more relevant there. */
+  rank: number;
+}
+
+export interface PlatformReport {
+  id: PlatformId;
+  status: PlatformStatus;
+  count: number;
+  searchUrl: string;
+}
+
+export interface SearchResponse {
+  query: string;
+  fetchedAt: string;
+  results: Product[];
+  platforms: PlatformReport[];
+}
+
+export interface PlatformResult {
+  id: PlatformId;
+  status: "ok" | "unavailable";
+  products: Product[];
+  searchUrl: string;
+}
+
+export type PlatformFetcher = (query: string) => Promise<PlatformResult>;

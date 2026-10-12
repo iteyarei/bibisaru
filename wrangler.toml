@@ -1,0 +1,5 @@
+# Cloudflare Pages. Dashboard build uses the same output directory.
+# No environment variables are required for v1.
+name = "bibisaru"
+compatibility_date = "2026-10-12"
+pages_build_output_dir = "dist"
