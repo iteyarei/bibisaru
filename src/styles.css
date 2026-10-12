@@ -119,6 +119,12 @@ header {
   overflow: hidden;
 }
 
+.search-hint {
+  margin: 6px 0 0 16px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .search-icon { width: 20px; height: 20px; flex: none; color: var(--muted); }
 
 .search input, .ex input {

@@ -12,6 +12,7 @@ export const zhTW = {
     "一次搜尋 momo、PChome、Yahoo 奇摩、全聯、東森、金石堂、三民等購物網站，把價格由低到高排好。沒有廣告、沒有置頂。",
   searchLabel: "關鍵字",
   searchPlaceholder: "想找什麼？例如：藍芽耳機",
+  searchHint: "多個關鍵字用空格分開，商品要全部符合",
   searchSubmit: "搜尋",
   excludeLabel: "排除關鍵字",
   excludePlaceholder: "不想看到的字，例如：二手",

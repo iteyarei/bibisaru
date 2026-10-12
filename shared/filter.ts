@@ -1,5 +1,6 @@
-import type { PlatformId, Product, SortMode } from "./types";
+import { titleHasEveryTerm } from "./synonyms";
 import { normalizeMatchText } from "./text";
+import type { PlatformId, Product, SortMode } from "./types";
 
 export function filterByKeywords(products: readonly Product[], keywords: readonly string[]): Product[] {
   const needles = keywords.map((keyword) => normalizeMatchText(keyword.trim())).filter(Boolean);
@@ -8,6 +9,13 @@ export function filterByKeywords(products: readonly Product[], keywords: readonl
     const title = normalizeMatchText(product.title);
     return !needles.some((needle) => title.includes(needle));
   });
+}
+
+/** Every search term must appear in the title. Synonym rows count as the same term. */
+export function filterBySearchTerms(products: readonly Product[], query: string): Product[] {
+  const tokens = query.trim();
+  if (!tokens) return [...products];
+  return products.filter((product) => titleHasEveryTerm(product.title, query));
 }
 
 export function filterByPlatforms(products: readonly Product[], enabled: readonly PlatformId[]): Product[] {
@@ -92,7 +100,8 @@ export function prepareResults(
 ): Array<Product & { lowest: boolean }> {
   const byPlatform = filterByPlatforms(products, options.platforms);
   const byKeyword = filterByKeywords(byPlatform, options.keywords);
-  const byPrice = filterByPrice(byKeyword, options.priceMin ?? null, options.priceMax ?? null);
+  const byTerms = filterBySearchTerms(byKeyword, options.query);
+  const byPrice = filterByPrice(byTerms, options.priceMin ?? null, options.priceMax ?? null);
   return markLowest(sortProducts(byPrice, options.sort, options.query));
 }
 
