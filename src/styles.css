@@ -136,7 +136,32 @@ header {
   font-size: 16px;
 }
 
-.search input::-webkit-search-cancel-button { display: none; }
+.search input::-webkit-search-cancel-button,
+.search input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
+.clear {
+  width: 36px;
+  height: 36px;
+  min-width: 32px;
+  min-height: 32px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex: none;
+  padding: 0;
+}
+
+.clear[hidden] { display: none; }
+.clear svg { width: 16px; height: 16px; pointer-events: none; }
+.clear:hover, .clear:focus-visible { background: rgba(26, 46, 43, 0.08); color: var(--ink); }
 
 .sbtn {
   width: 40px;

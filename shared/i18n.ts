@@ -14,6 +14,7 @@ export const zhTW = {
   searchPlaceholder: "想找什麼？例如：藍芽耳機",
   searchHint: "多個關鍵字用空格分開，商品要全部符合",
   searchSubmit: "搜尋",
+  clear: "清除",
   excludeLabel: "排除關鍵字",
   excludePlaceholder: "不想看到的字，例如：二手",
   removeKeyword: "移除「{word}」",
