@@ -1,9 +1,13 @@
 import {
   coupangHasList,
+  etmallProducts,
+  kingstoneProducts,
   momoProducts,
   normalizeCoupang,
   normalizePchome,
   normalizeShopee,
+  pxgoProducts,
+  sanminProducts,
   yahooProducts,
 } from "../../shared/normalize";
 import { platformSearchUrl, rawSearchUrl } from "../../shared/platforms";
@@ -53,15 +57,20 @@ async function readLimited(response: Response): Promise<string> {
   return new TextDecoder().decode(merged);
 }
 
-async function request(url: string, headers: Record<string, string>): Promise<{ ok: boolean; text: string }> {
-  const response = await fetch(
-    url,
-    withEdgeCache({
-      headers: { "user-agent": USER_AGENT, "accept-language": "zh-TW,zh;q=0.9,en;q=0.8", ...headers },
-      redirect: "follow",
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    }),
-  );
+async function request(
+  url: string,
+  headers: Record<string, string>,
+  extra?: { method?: string; body?: string },
+): Promise<{ ok: boolean; text: string }> {
+  const method = extra?.method ?? "GET";
+  const init: RequestInit = {
+    method,
+    body: extra?.body,
+    headers: { "user-agent": USER_AGENT, "accept-language": "zh-TW,zh;q=0.9,en;q=0.8", ...headers },
+    redirect: "follow",
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  };
+  const response = await fetch(url, method === "GET" ? withEdgeCache(init) : init);
   return { ok: response.ok, text: await readLimited(response) };
 }
 
@@ -128,6 +137,88 @@ const fetchCoupang: PlatformFetcher = async (query) => {
   }
 };
 
+const fetchPxgo: PlatformFetcher = async (query) => {
+  try {
+    const body = JSON.stringify({
+      search_setting_type: 1,
+      keyword: query,
+      sort_type: 0,
+      page_index: 1,
+      page_size: 24,
+      filters: [],
+      visitor_id: "bibisaru",
+      user_info_id: "",
+      is_using_prod_es: false,
+      skip_brand_detection: false,
+    });
+    const { ok: fine, text } = await request(
+      "https://api-pxbox.es.pxmart.com.tw/app/3.0/spu/single_search",
+      {
+        accept: "application/json",
+        "content-type": "application/json",
+        origin: "https://pxbox.es.pxmart.com.tw",
+        referer: "https://pxbox.es.pxmart.com.tw/",
+      },
+      { method: "POST", body },
+    );
+    const products = fine ? pxgoProducts(JSON.parse(text) as unknown) : null;
+    if (!products) return unavailableResult("pxgo", query);
+    return ok("pxgo", query, products);
+  } catch {
+    return unavailableResult("pxgo", query);
+  }
+};
+
+const fetchEtmall: PlatformFetcher = async (query) => {
+  try {
+    const { ok: fine, text } = await request(
+      `https://www.etmall.com.tw/Search/Get?keyword=${encodeURIComponent(query)}`,
+      {
+        accept: "application/json, text/plain, */*",
+        referer: rawSearchUrl("etmall", query),
+      },
+    );
+    const products = fine ? etmallProducts(JSON.parse(text) as unknown) : null;
+    if (!products) return unavailableResult("etmall", query);
+    return ok("etmall", query, products);
+  } catch {
+    return unavailableResult("etmall", query);
+  }
+};
+
+const fetchKingstone: PlatformFetcher = async (query) => {
+  try {
+    const { ok: fine, text } = await request(rawSearchUrl("kingstone", query), {
+      ...DOCUMENT_HEADERS,
+      referer: "https://www.kingstone.com.tw/",
+      "sec-fetch-site": "same-origin",
+    });
+    const products = fine ? kingstoneProducts(text) : null;
+    if (!products) return unavailableResult("kingstone", query);
+    return ok("kingstone", query, products);
+  } catch {
+    return unavailableResult("kingstone", query);
+  }
+};
+
+const fetchSanmin: PlatformFetcher = async (query) => {
+  try {
+    const { ok: fine, text } = await request(rawSearchUrl("sanmin", query), {
+      ...DOCUMENT_HEADERS,
+      referer: "https://www.sanmin.com.tw/",
+      "sec-fetch-site": "same-origin",
+    });
+    const products = fine ? sanminProducts(text) : null;
+    if (!products) return unavailableResult("sanmin", query);
+    return ok("sanmin", query, products);
+  } catch {
+    return unavailableResult("sanmin", query);
+  }
+};
+
+/** 誠品線上 sits behind a Cloudflare challenge from this environment. Link out, don't invent rows. */
+const fetchEslite: PlatformFetcher = async (query) => unavailableResult("eslite", query);
+
 const fetchShopee: PlatformFetcher = async (query) => {
   try {
     const keyword = encodeURIComponent(query);
@@ -152,7 +243,12 @@ const fetchShopee: PlatformFetcher = async (query) => {
 export const fetchers: Record<PlatformId, PlatformFetcher> = {
   momo: fetchMomo,
   pchome: fetchPchome,
-  coupang: fetchCoupang,
   yahoo: fetchYahoo,
+  coupang: fetchCoupang,
   shopee: fetchShopee,
+  pxgo: fetchPxgo,
+  etmall: fetchEtmall,
+  kingstone: fetchKingstone,
+  sanmin: fetchSanmin,
+  eslite: fetchEslite,
 };

@@ -1,4 +1,14 @@
-export type PlatformId = "momo" | "pchome" | "coupang" | "yahoo" | "shopee";
+export type PlatformId =
+  | "momo"
+  | "pchome"
+  | "yahoo"
+  | "coupang"
+  | "shopee"
+  | "pxgo"
+  | "etmall"
+  | "kingstone"
+  | "sanmin"
+  | "eslite";
 
 export type SortMode = "price-asc" | "price-desc" | "relevance";
 

@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { AFFILIATE_ENABLED, applyAffiliate } from "../shared/affiliate";
 import {
+  kingstoneProducts,
   normalizeCoupang,
+  normalizeEtmall,
   normalizeMomo,
   normalizePchome,
+  normalizePxgo,
   normalizeShopee,
   normalizeYahoo,
+  sanminProducts,
 } from "../shared/normalize";
 import { parsePrice } from "../shared/text";
 import type { Product } from "../shared/types";
@@ -190,6 +194,103 @@ describe("normalizeShopee", () => {
 
   it("does not invent items from an error payload", () => {
     expect(normalizeShopee({ error: 90309999 })).toEqual([]);
+  });
+});
+
+describe("newer storefronts", () => {
+  it("reads 全聯 sale price and product id", () => {
+    const products = normalizePxgo({
+      data: {
+        product_list: [
+          {
+            id: 2655,
+            product_name: "光泉保久乳",
+            sale_price: 436,
+            picture: "https://img-pxbox.es.pxmart.com.tw/milk.png",
+            is_upcoming_product: false,
+          },
+          { id: 9, product_name: "尚未開賣", sale_price: 100, picture: "", is_upcoming_product: true },
+        ],
+      },
+    });
+    expect(products).toEqual([
+      {
+        platform: "pxgo",
+        title: "光泉保久乳",
+        price: 436,
+        image: "https://img-pxbox.es.pxmart.com.tw/milk.png",
+        url: "https://pxbox.es.pxmart.com.tw/product/2655",
+        rank: 0,
+      },
+    ]);
+  });
+
+  it("uses 東森 final price and skips adult or unbuyable rows", () => {
+    const products = normalizeEtmall({
+      SearchProductResult: {
+        products: [
+          {
+            id: 7926508,
+            title: "藍牙耳機",
+            imageUrl: "//media.etmall.com.tw/nximg/a.jpg",
+            pageLink: "/i/7926508",
+            marketingPrice: "8980",
+            finalPrice: "2980",
+            isAgeRating: false,
+            purchasable: true,
+          },
+          {
+            title: "限制級",
+            finalPrice: "100",
+            pageLink: "/i/1",
+            isAgeRating: true,
+            purchasable: true,
+          },
+        ],
+      },
+    });
+    expect(products[0]).toMatchObject({
+      platform: "etmall",
+      title: "藍牙耳機",
+      price: 2980,
+      image: "https://media.etmall.com.tw/nximg/a.jpg",
+      url: "https://www.etmall.com.tw/i/7926508",
+    });
+    expect(products).toHaveLength(1);
+  });
+
+  it("reads 金石堂 sale price from the result card", () => {
+    const html = `
+      <div class="displayunit">
+        <img src="https://cdn.kingstone.com.tw/a.jpg" alt="惠普耳機">
+        <h3 class="pdnamebox"><a href="/basic/3030000102785/?lid=search">惠普耳機</a></h3>
+        <span>特價<b>699</b>元</span>
+      </div>`;
+    expect(kingstoneProducts(html)?.[0]).toMatchObject({
+      platform: "kingstone",
+      title: "惠普耳機",
+      price: 699,
+      url: "https://www.kingstone.com.tw/basic/3030000102785/",
+    });
+    expect(kingstoneProducts("<html></html>")).toBeNull();
+  });
+
+  it("prefers 三民 discount price over list price", () => {
+    const html = `
+      <div class="sProduct">
+        <a href="/product/index/004113511"><h3>BIDENUO耳機</h3></a>
+        <img data-src="https://cdnec.sanmin.com.tw/product_images/677/a.jpg" />
+        <span class="ListPrice">定價：600 元</span>
+        <span class="Price ">360</span>
+      </div>
+      <div class="sProduct">
+        <a href="/product/index/004100001"><h3>只有定價</h3></a>
+        <span class="ListPrice">定價：200 元</span>
+      </div>`;
+    const products = sanminProducts(html);
+    expect(products?.map((product) => product.price)).toEqual([360, 200]);
+    expect(products?.[0]?.url).toBe("https://www.sanmin.com.tw/product/index/004113511");
+    expect(sanminProducts("<html>no list</html>")).toBeNull();
   });
 });
 

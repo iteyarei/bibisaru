@@ -1,7 +1,18 @@
 import { applyAffiliate } from "./affiliate";
 import type { PlatformId } from "./types";
 
-export const PLATFORM_IDS = ["momo", "pchome", "coupang", "yahoo", "shopee"] as const;
+export const PLATFORM_IDS = [
+  "momo",
+  "pchome",
+  "yahoo",
+  "coupang",
+  "shopee",
+  "pxgo",
+  "etmall",
+  "kingstone",
+  "sanmin",
+  "eslite",
+] as const;
 
 export const MAX_PER_PLATFORM = 24;
 
@@ -14,9 +25,14 @@ export interface PlatformMeta {
 export const PLATFORMS: readonly PlatformMeta[] = [
   { id: "momo", name: "momo", color: "#D6177A" },
   { id: "pchome", name: "PChome", color: "#E0312B" },
-  { id: "coupang", name: "酷澎", color: "#F0562B" },
   { id: "yahoo", name: "Yahoo奇摩", color: "#6D28D9" },
+  { id: "coupang", name: "酷澎", color: "#F0562B" },
   { id: "shopee", name: "蝦皮", color: "#EE4D2D" },
+  { id: "pxgo", name: "全聯", color: "#1B4F8A" },
+  { id: "etmall", name: "東森", color: "#C2410C" },
+  { id: "kingstone", name: "金石堂", color: "#A16207" },
+  { id: "sanmin", name: "三民", color: "#1D4ED8" },
+  { id: "eslite", name: "誠品", color: "#44403C" },
 ];
 
 export function isPlatformId(value: string): value is PlatformId {
@@ -37,12 +53,22 @@ export function rawSearchUrl(id: PlatformId, query: string): string {
       return `https://www.momoshop.com.tw/search/${q}`;
     case "pchome":
       return `https://24h.pchome.com.tw/search/?q=${q}`;
-    case "coupang":
-      return `https://www.tw.coupang.com/np/search?q=${q}`;
     case "yahoo":
       return `https://tw.buy.yahoo.com/search/product?p=${q}`;
+    case "coupang":
+      return `https://www.tw.coupang.com/np/search?q=${q}`;
     case "shopee":
       return `https://shopee.tw/search?keyword=${q}`;
+    case "pxgo":
+      return `https://pxbox.es.pxmart.com.tw/search/result?keyword=${q}`;
+    case "etmall":
+      return `https://www.etmall.com.tw/Search?keyword=${q}`;
+    case "kingstone":
+      return `https://www.kingstone.com.tw/search/key/${q}`;
+    case "sanmin":
+      return `https://www.sanmin.com.tw/search/index/?ct=K&k=${q}`;
+    case "eslite":
+      return `https://www.eslite.com/Search?keyword=${q}`;
   }
 }
 

@@ -14,7 +14,7 @@ export interface Prefs {
 
 export function defaultPrefs(): Prefs {
   return {
-    platforms: { momo: true, pchome: true, coupang: true, yahoo: true, shopee: true },
+    platforms: Object.fromEntries(PLATFORM_IDS.map((id) => [id, true])) as Record<PlatformId, boolean>,
     exclude: [],
     sort: "price-asc",
     preset: false,

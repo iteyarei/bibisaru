@@ -47,7 +47,7 @@ npm run test:live
 
 ## 搜尋怎麼運作
 
-`GET /api/search?q=耳機&platforms=momo,pchome,coupang,yahoo,shopee`
+`GET /api/search?q=耳機&platforms=momo,pchome,yahoo,coupang,shopee,pxgo,etmall,kingstone,sanmin,eslite`
 
 每家最多回 24 筆，欄位是 `{ platform, title, price, image, url }`。某一家失敗不會讓其他家一起失敗。失敗的那一家在畫面上顯示「暫時無法取得」，並給一顆按鈕打開該平台自己的搜尋頁。
 
@@ -59,6 +59,8 @@ npm run test:live
 
 關鍵字「耳機」，每個平台各請求一次。
 
+平台開關順序：momo、PChome、Yahoo奇摩、酷澎、蝦皮，後面再加上面有接上的店。
+
 | 平台 | 結果 | 做法 |
 | --- | --- | --- |
 | momo | 有抓到商品（24 筆） | 讀搜尋頁 HTML 裡的商品清單 |
@@ -66,8 +68,23 @@ npm run test:live
 | Yahoo 奇摩購物中心 | 有抓到商品（24 筆） | 讀搜尋頁內嵌的 `isoredux-data` |
 | 酷澎 | 不穩定 | 第一次 `/np/search` 回了完整商品頁，轉接器可解析（例如 EarPods，$539）。同一台機器稍後再打就變成 403。失敗時不捏造商品，改成前往酷澎搜尋 |
 | 蝦皮 | 拿不到 | 搜尋 API 回 403（錯誤碼 90309999），搜尋頁是空殼。只提供前往蝦皮搜尋 |
+| 全聯 | 有抓到商品（24 筆） | 全聯全電商公開搜尋 `api-pxbox.es.pxmart.com.tw` 的 `single_search` |
+| 東森 | 有抓到商品（48 筆，頁面只用前 24） | `etmall.com.tw/Search/Get` JSON，用成交價 `finalPrice` |
+| 金石堂 | 有抓到商品（48 筆，頁面只用前 24） | 讀搜尋頁 HTML 的商品卡 |
+| 三民 | 有抓到商品 | 讀搜尋頁 HTML。有優惠價就用優惠價，否則用定價 |
+| 誠品 | 拿不到，只提供前往搜尋 | 搜尋頁被 Cloudflare 擋下（403）。不捏造商品 |
 
-酷澎與蝦皮在 Cloudflare 的出口 IP 上可能和這台機器不一樣：有機會成功，也有機會繼續被擋。程式兩邊都處理了。
+沒有接上的店，以及原因：
+
+- 博客來：首頁與搜尋都回 403。
+- 家樂福線上購物：這台機器上 `carrefour.com.tw` 被轉到萬家福，不是家樂福的商品搜尋。
+- 燦坤：找到的搜尋網址回到首頁錯誤頁，沒有商品清單。
+- 全國電子：搜尋網址沒有回商品資料。
+- friDay購物：搜尋頁是空殼，沒有商品。
+- 康是美、屈臣氏：頁面或 API 被擋，沒有可解析的搜尋結果。
+- 全聯官網 `shop.pxmart.com.tw` 回 403；實際接的是全聯全電商（PX Go / pxbox）。
+
+酷澎、蝦皮、誠品在 Cloudflare 的出口 IP 上可能和這台機器不一樣。
 
 ## 風險
 

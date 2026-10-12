@@ -30,7 +30,7 @@ describe("live platform adapters", () => {
       expect(product.platform).toBeTruthy();
     }
 
-    for (const id of ["momo", "pchome", "yahoo"] as const) {
+    for (const id of ["momo", "pchome", "yahoo", "pxgo", "etmall", "kingstone", "sanmin"] as const) {
       const platform = response.platforms.find((item) => item.id === id);
       expect(platform?.status, id).toBe("ok");
       expect(platform?.count, id).toBeGreaterThan(0);
@@ -51,5 +51,11 @@ describe("live platform adapters", () => {
     expect(shopee?.status).toBe("unavailable");
     expect(shopee?.count).toBe(0);
     expect(response.results.some((product) => product.platform === "shopee")).toBe(false);
+
+    const eslite = response.platforms.find((item) => item.id === "eslite");
+    expect(eslite?.status).toBe("unavailable");
+    expect(eslite?.count).toBe(0);
+    expect(response.results.some((product) => product.platform === "eslite")).toBe(false);
+    expect(eslite?.searchUrl).toContain("https://www.eslite.com/Search?keyword=");
   });
 });

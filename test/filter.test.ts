@@ -132,7 +132,19 @@ describe("keyword chips and query", () => {
   });
 
   it("parses the platform parameter", () => {
-    expect(parsePlatformParam(null)).toEqual(["momo", "pchome", "coupang", "yahoo", "shopee"]);
+    expect(parsePlatformParam(null)).toEqual([
+      "momo",
+      "pchome",
+      "yahoo",
+      "coupang",
+      "shopee",
+      "pxgo",
+      "etmall",
+      "kingstone",
+      "sanmin",
+      "eslite",
+    ]);
+    expect(parsePlatformParam("shopee,yahoo,pchome")).toEqual(["pchome", "yahoo", "shopee"]);
     expect(parsePlatformParam("shopee,pchome,nope")).toEqual(["pchome", "shopee"]);
     expect(parsePlatformParam("")).toEqual([]);
   });
