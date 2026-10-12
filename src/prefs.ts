@@ -1,4 +1,4 @@
-import { addKeywords } from "../shared/filter";
+import { addKeywords, parsePriceBound } from "../shared/filter";
 import { PRESET_EXCLUDE } from "../shared/i18n";
 import { PLATFORM_IDS } from "../shared/platforms";
 import type { PlatformId, SortMode } from "../shared/types";
@@ -10,6 +10,8 @@ export interface Prefs {
   exclude: string[];
   sort: SortMode;
   preset: boolean;
+  priceMin: number | null;
+  priceMax: number | null;
 }
 
 export function defaultPrefs(): Prefs {
@@ -18,7 +20,13 @@ export function defaultPrefs(): Prefs {
     exclude: [],
     sort: "price-asc",
     preset: false,
+    priceMin: null,
+    priceMax: null,
   };
+}
+
+function storedBound(value: unknown): number | null {
+  return typeof value === "number" ? parsePriceBound(String(value)) : null;
 }
 
 function presetComplete(exclude: readonly string[]): boolean {
@@ -47,6 +55,8 @@ export function loadPrefs(): Prefs {
       prefs.sort = data.sort;
     }
     prefs.preset = data.preset === true && presetComplete(prefs.exclude);
+    prefs.priceMin = storedBound(data.priceMin);
+    prefs.priceMax = storedBound(data.priceMax);
     return prefs;
   } catch {
     return defaultPrefs();

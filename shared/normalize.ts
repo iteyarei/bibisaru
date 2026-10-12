@@ -7,6 +7,7 @@ import {
   cleanTitle,
   decodeHtml,
   jsUnescape,
+  knownSoldOut,
   parseJsonArrayPrefix,
   parsePrice,
 } from "./text";
@@ -110,7 +111,12 @@ export function readYahooHits(html: string): Draft[] | null {
       price: parsePrice(row.ec_price),
       image: String(row.ec_image ?? ""),
       url: String(row.ec_item_url ?? ""),
-      skip: row.ec_is_adult_product === 1 || row.ec_is_adult_product === "1",
+      skip:
+        row.ec_is_adult_product === 1 ||
+        row.ec_is_adult_product === "1" ||
+        row.ec_has_stock === 0 ||
+        row.ec_has_stock === "0" ||
+        knownSoldOut(row.ec_stockcount),
     };
   });
 }
@@ -145,7 +151,7 @@ function momoDrafts(list: unknown[]): Product[] {
         price: momoPrice(row),
         image: String(row.imgUrl ?? ""),
         url,
-        skip: row.isAdultLimit === true,
+        skip: row.isAdultLimit === true || knownSoldOut(row.goodsStock),
       };
     }),
   );
@@ -208,7 +214,7 @@ export function normalizePxgo(data: unknown): Product[] {
         url: id === undefined || id === null || String(id) === ""
           ? ""
           : `https://pxbox.es.pxmart.com.tw/product/${encodeURIComponent(String(id))}`,
-        skip: row.is_upcoming_product === true,
+        skip: row.is_upcoming_product === true || row.is_sold_out === true || knownSoldOut(row.stock),
       };
     }),
   );
@@ -238,7 +244,12 @@ export function normalizeEtmall(data: unknown): Product[] {
         price: parsePrice(row.finalPrice),
         image: String(row.imageUrl ?? ""),
         url,
-        skip: row.isAgeRating === true || row.purchasable === false,
+        skip:
+          row.isAgeRating === true ||
+          row.purchasable === false ||
+          row.haveStocks === false ||
+          row.haveStocks === "false" ||
+          row.haveStocks === "False",
       };
     }),
   );
@@ -269,6 +280,7 @@ export function kingstoneProducts(html: string): Product[] | null {
         price: parsePrice(price?.[1] ?? null),
         image: image?.[1] ?? "",
         url: href ? `https://www.kingstone.com.tw/basic/${href[1]}/` : "",
+        skip: /貨到通知|缺貨|已售完|無庫存/.test(chunk),
       };
     }),
   );
@@ -289,11 +301,14 @@ export function sanminProducts(html: string): Product[] | null {
       const image = /data-src="(https:[^"]+)"/.exec(chunk);
       const sale = /class="Price\s*"[^>]*>([\d,]+)/.exec(chunk);
       const list = /class="ListPrice"[^>]*>[\s\S]*?([\d,]{2,})/.exec(chunk);
+      const stockHtml = /class="Stock\b[^"]*"[^>]*>([\s\S]*?)<\/div>/.exec(chunk)?.[1] ?? "";
+      const stockText = decodeHtml(stockHtml.replace(/<[^>]*>/g, "")).replace(/\s+/g, "");
       return {
         title: title?.[1] ?? "",
         price: parsePrice(sale?.[1] ?? list?.[1] ?? null),
         image: image?.[1] ?? "",
         url: href ? `https://www.sanmin.com.tw/product/index/${href[1]}` : "",
+        skip: stockText.includes("無庫存") || /^庫存[:：]0(?:$|[^0-9])/.test(stockText),
       };
     }),
   );

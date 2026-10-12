@@ -3,8 +3,10 @@ import {
   addKeywords,
   filterByKeywords,
   filterByPlatforms,
+  filterByPrice,
   markLowest,
   parseKeywordDraft,
+  parsePriceBound,
   prepareResults,
   removeKeywords,
   sortProducts,
@@ -109,6 +111,29 @@ describe("sort and lowest price", () => {
       "yahoo",
     ]);
     expect(catalog.map((product) => product.title)).toEqual(original);
+  });
+
+  it("filters by price and swaps the ends when the minimum is higher", () => {
+    const prices = catalog.map((product) => product.price);
+    expect(filterByPrice(catalog, null, null).map((product) => product.price)).toEqual(prices);
+    expect(parsePriceBound("")).toBeNull();
+    expect(parsePriceBound("1,200")).toBe(1200);
+    expect(filterByPrice(catalog, 1000, null).every((product) => product.price >= 1000)).toBe(true);
+    expect(filterByPrice(catalog, null, 500).every((product) => product.price <= 500)).toBe(true);
+    const swapped = filterByPrice(catalog, 2000, 1000).map((product) => product.price);
+    expect(swapped.every((price) => price >= 1000 && price <= 2000)).toBe(true);
+    expect(swapped.length).toBeGreaterThan(0);
+
+    const visible = prepareResults(catalog, {
+      keywords: [],
+      platforms: ["momo", "pchome", "coupang", "yahoo", "shopee"],
+      sort: "price-asc",
+      query: "耳機",
+      priceMin: 2000,
+      priceMax: null,
+    });
+    expect(Math.min(...visible.map((product) => product.price))).toBeGreaterThanOrEqual(2000);
+    expect(visible[0]?.lowest).toBe(true);
   });
 });
 

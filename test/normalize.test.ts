@@ -259,6 +259,74 @@ describe("newer storefronts", () => {
     expect(products).toHaveLength(1);
   });
 
+  it("drops listings the storefront marks as sold out", () => {
+    const momo = normalizeMomo(
+      momoPage([
+        { ...momoItem, goodsStock: "12" },
+        { ...momoItem, goodsCode: "8", goodsName: "已售完耳機", goodsStock: "0", goodsUrl: "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=8" },
+      ]),
+    );
+    expect(momo.map((product) => product.title)).toEqual(["輕巧入耳式耳機"]);
+
+    const yahoo = normalizeYahoo(
+      `<script id="isoredux-data" type="application/json">${JSON.stringify({
+        search: {
+          ecsearch: {
+            hits: [
+              {
+                ec_title: "有貨",
+                ec_price: 100,
+                ec_image: "https://img.yec.tw/a.jpg",
+                ec_item_url: "https://tw.buy.yahoo.com/gdsale/a.html",
+                ec_has_stock: "1",
+                ec_stockcount: "3",
+              },
+              {
+                ec_title: "缺貨",
+                ec_price: 80,
+                ec_image: "https://img.yec.tw/b.jpg",
+                ec_item_url: "https://tw.buy.yahoo.com/gdsale/b.html",
+                ec_has_stock: "0",
+                ec_stockcount: "0",
+              },
+            ],
+          },
+        },
+      })}</script>`,
+    );
+    expect(yahoo.map((product) => product.title)).toEqual(["有貨"]);
+
+    const px = normalizePxgo({
+      data: {
+        product_list: [
+          { id: 1, product_name: "有貨", sale_price: 50, picture: "https://img-pxbox.es.pxmart.com.tw/a.png", stock: 2, is_sold_out: false },
+          { id: 2, product_name: "售完", sale_price: 40, picture: "https://img-pxbox.es.pxmart.com.tw/b.png", stock: 0, is_sold_out: true },
+        ],
+      },
+    });
+    expect(px.map((product) => product.title)).toEqual(["有貨"]);
+
+    const et = normalizeEtmall({
+      SearchProductResult: {
+        products: [
+          { title: "有貨", finalPrice: "100", pageLink: "/i/1", imageUrl: "", haveStocks: true, purchasable: true },
+          { title: "售完", finalPrice: "90", pageLink: "/i/2", imageUrl: "", haveStocks: false, purchasable: true },
+        ],
+      },
+    });
+    expect(et.map((product) => product.title)).toEqual(["有貨"]);
+
+    const kingstone = kingstoneProducts(`
+      <div class="displayunit"><h3 class="pdnamebox"><a href="/basic/1/">有貨</a></h3><span>特價<b>100</b>元</span>加入購物車</div>
+      <div class="displayunit"><h3 class="pdnamebox"><a href="/basic/2/">售完</a></h3><span>特價<b>90</b>元</span>貨到通知</div>`);
+    expect(kingstone?.map((product) => product.title)).toEqual(["有貨"]);
+
+    const sanmin = sanminProducts(`
+      <div class="sProduct"><a href="/product/index/1"><h3>有貨</h3></a><span class="Price ">100</span><div class="Stock">庫存：2</div></div>
+      <div class="sProduct"><a href="/product/index/2"><h3>售完</h3></a><span class="Price ">80</span><div class="Stock">無庫存</div></div>`);
+    expect(sanmin?.map((product) => product.title)).toEqual(["有貨"]);
+  });
+
   it("reads 金石堂 sale price from the result card", () => {
     const html = `
       <div class="displayunit">

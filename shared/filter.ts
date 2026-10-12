@@ -1,5 +1,6 @@
-import type { PlatformId, Product, SortMode } from "./types";
+import { titleHasEveryTerm } from "./synonyms";
 import { normalizeMatchText } from "./text";
+import type { PlatformId, Product, SortMode } from "./types";
 
 export function filterByKeywords(products: readonly Product[], keywords: readonly string[]): Product[] {
   const needles = keywords.map((keyword) => normalizeMatchText(keyword.trim())).filter(Boolean);
@@ -10,9 +11,48 @@ export function filterByKeywords(products: readonly Product[], keywords: readonl
   });
 }
 
+/** Every search term must appear in the title. Synonym rows count as the same term. */
+export function filterBySearchTerms(products: readonly Product[], query: string): Product[] {
+  const tokens = query.trim();
+  if (!tokens) return [...products];
+  return products.filter((product) => titleHasEveryTerm(product.title, query));
+}
+
 export function filterByPlatforms(products: readonly Product[], enabled: readonly PlatformId[]): Product[] {
   const allowed = new Set(enabled);
   return products.filter((product) => allowed.has(product.platform));
+}
+
+/** Blank input is unlimited. A non-digit string is ignored. */
+export function parsePriceBound(raw: string): number | null {
+  const trimmed = raw.trim().replace(/[,，]/g, "");
+  if (!trimmed || !/^\d+$/.test(trimmed)) return null;
+  const amount = Number(trimmed);
+  if (!Number.isFinite(amount) || amount >= 100_000_000) return null;
+  return amount;
+}
+
+/**
+ * Inclusive TWD range. An empty bound is unlimited.
+ * If the lower number is greater than the higher one, the two ends are swapped
+ * so the range is still the span between them.
+ */
+export function filterByPrice(
+  products: readonly Product[],
+  min: number | null,
+  max: number | null,
+): Product[] {
+  let low = min;
+  let high = max;
+  if (low !== null && high !== null && low > high) {
+    const swapped = low;
+    low = high;
+    high = swapped;
+  }
+  if (low === null && high === null) return [...products];
+  return products.filter(
+    (product) => (low === null || product.price >= low) && (high === null || product.price <= high),
+  );
 }
 
 function relevanceScore(title: string, query: string): number {
@@ -54,11 +94,15 @@ export function prepareResults(
     platforms: readonly PlatformId[];
     sort: SortMode;
     query: string;
+    priceMin?: number | null;
+    priceMax?: number | null;
   },
 ): Array<Product & { lowest: boolean }> {
   const byPlatform = filterByPlatforms(products, options.platforms);
   const byKeyword = filterByKeywords(byPlatform, options.keywords);
-  return markLowest(sortProducts(byKeyword, options.sort, options.query));
+  const byTerms = filterBySearchTerms(byKeyword, options.query);
+  const byPrice = filterByPrice(byTerms, options.priceMin ?? null, options.priceMax ?? null);
+  return markLowest(sortProducts(byPrice, options.sort, options.query));
 }
 
 export function parseKeywordDraft(raw: string): string[] {
