@@ -3,9 +3,14 @@ import type { PlatformId } from "./types";
 const PRODUCT_HOSTS: Record<PlatformId, RegExp> = {
   momo: /(^|\.)momoshop\.com\.tw$/i,
   pchome: /(^|\.)pchome\.com\.tw$/i,
-  coupang: /(^|\.)coupang\.com$/i,
   yahoo: /(^|\.)buy\.yahoo\.com$/i,
+  coupang: /(^|\.)coupang\.com$/i,
   shopee: /(^|\.)shopee\.tw$/i,
+  pxgo: /(^|\.)pxmart\.com\.tw$/i,
+  etmall: /(^|\.)etmall\.com\.tw$/i,
+  kingstone: /(^|\.)kingstone\.com\.tw$/i,
+  sanmin: /(^|\.)sanmin\.com\.tw$/i,
+  eslite: /(^|\.)eslite\.com$/i,
 };
 
 export function decodeHtml(value: string): string {

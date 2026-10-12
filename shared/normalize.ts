@@ -192,6 +192,113 @@ function coupangBlocks(html: string): string[] {
   return html.slice(listAt, listAt + 500_000).split(/<li\b/i).slice(1, 81);
 }
 
+export function normalizePxgo(data: unknown): Product[] {
+  const payload = asRecord(asRecord(data)?.data) ?? asRecord(data);
+  const products = payload?.product_list;
+  if (!Array.isArray(products)) return [];
+  return collect(
+    "pxgo",
+    products.slice(0, 80).map((item) => {
+      const row = asRecord(item) ?? {};
+      const id = row.id;
+      return {
+        title: String(row.product_name ?? ""),
+        price: parsePrice(row.sale_price),
+        image: String(row.picture || row.first_product_picture || ""),
+        url: id === undefined || id === null || String(id) === ""
+          ? ""
+          : `https://pxbox.es.pxmart.com.tw/product/${encodeURIComponent(String(id))}`,
+        skip: row.is_upcoming_product === true,
+      };
+    }),
+  );
+}
+
+export function pxgoProducts(data: unknown): Product[] | null {
+  const payload = asRecord(asRecord(data)?.data) ?? asRecord(data);
+  if (!payload || !Array.isArray(payload.product_list)) return null;
+  return normalizePxgo(data);
+}
+
+export function normalizeEtmall(data: unknown): Product[] {
+  const products = asRecord(asRecord(data)?.SearchProductResult)?.products;
+  if (!Array.isArray(products)) return [];
+  return collect(
+    "etmall",
+    products.slice(0, 80).map((item) => {
+      const row = asRecord(item) ?? {};
+      const link = String(row.pageLink ?? "");
+      const url = link.startsWith("https://")
+        ? link
+        : link.startsWith("/")
+          ? `https://www.etmall.com.tw${link}`
+          : "";
+      return {
+        title: String(row.title ?? ""),
+        price: parsePrice(row.finalPrice),
+        image: String(row.imageUrl ?? ""),
+        url,
+        skip: row.isAgeRating === true || row.purchasable === false,
+      };
+    }),
+  );
+}
+
+export function etmallProducts(data: unknown): Product[] | null {
+  const products = asRecord(asRecord(data)?.SearchProductResult)?.products;
+  if (!Array.isArray(products)) return null;
+  return normalizeEtmall(data);
+}
+
+export function normalizeKingstone(html: string): Product[] {
+  return kingstoneProducts(html) ?? [];
+}
+
+export function kingstoneProducts(html: string): Product[] | null {
+  if (!html.includes('class="displayunit"')) return null;
+  const chunks = html.split('class="displayunit"').slice(1, 81);
+  return collect(
+    "kingstone",
+    chunks.map((chunk) => {
+      const href = /href="\/basic\/(\d+)/.exec(chunk);
+      const title = /<h3 class="pdnamebox">\s*<a\b[^>]*>([\s\S]*?)<\/a>/.exec(chunk);
+      const image = /<img\b[^>]*\ssrc="(https:[^"]+)"/.exec(chunk);
+      const price = /(?:特價|定價|優惠價)<b>([\d,]+)<\/b>/.exec(chunk);
+      return {
+        title: title?.[1] ?? "",
+        price: parsePrice(price?.[1] ?? null),
+        image: image?.[1] ?? "",
+        url: href ? `https://www.kingstone.com.tw/basic/${href[1]}/` : "",
+      };
+    }),
+  );
+}
+
+export function normalizeSanmin(html: string): Product[] {
+  return sanminProducts(html) ?? [];
+}
+
+export function sanminProducts(html: string): Product[] | null {
+  if (!html.includes('class="sProduct"')) return null;
+  const chunks = html.split('class="sProduct"').slice(1, 81);
+  return collect(
+    "sanmin",
+    chunks.map((chunk) => {
+      const href = /href="\/product\/index\/(\d+)"/.exec(chunk);
+      const title = /<h3>([\s\S]*?)<\/h3>/.exec(chunk);
+      const image = /data-src="(https:[^"]+)"/.exec(chunk);
+      const sale = /class="Price\s*"[^>]*>([\d,]+)/.exec(chunk);
+      const list = /class="ListPrice"[^>]*>[\s\S]*?([\d,]{2,})/.exec(chunk);
+      return {
+        title: title?.[1] ?? "",
+        price: parsePrice(sale?.[1] ?? list?.[1] ?? null),
+        image: image?.[1] ?? "",
+        url: href ? `https://www.sanmin.com.tw/product/index/${href[1]}` : "",
+      };
+    }),
+  );
+}
+
 export function normalizeShopee(data: unknown): Product[] {
   const items = asRecord(data)?.items;
   if (!Array.isArray(items)) return [];

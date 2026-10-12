@@ -5,10 +5,11 @@
  */
 export const zhTW = {
   brand: "比比猴",
+  tagline: "猴子都會用的比價網站",
   documentTitle: "比比猴 — 台灣購物比價",
   searchTitle: "{q} — 比比猴",
   metaDescription:
-    "一次搜尋 momo、PChome、酷澎、Yahoo 奇摩購物中心和蝦皮，把價格由低到高排好。沒有廣告、沒有置頂。",
+    "一次搜尋 momo、PChome、Yahoo 奇摩、全聯、東森、金石堂、三民等購物網站，把價格由低到高排好。沒有廣告、沒有置頂。",
   searchLabel: "關鍵字",
   searchPlaceholder: "想找什麼？例如：藍芽耳機",
   searchSubmit: "搜尋",
@@ -29,8 +30,8 @@ export const zhTW = {
   updatedMinutes: "約 {n} 分鐘前更新",
   empty: "找不到符合的商品，試試少一個排除字或打開更多平台",
   reset: "重設篩選",
-  introTitle: "輸入關鍵字，一次比較五家價格",
-  introBody: "momo、PChome、酷澎、Yahoo 奇摩購物中心、蝦皮。沒有廣告。",
+  introTitle: "輸入關鍵字，一次比較各家價格",
+  introBody: "momo、PChome、Yahoo 奇摩、酷澎、蝦皮、全聯、東森、金石堂、三民、誠品。沒有廣告。",
   unavailable: "{name}暫時無法取得",
   platformEmpty: "{name}沒有相符商品",
   goSearch: "前往搜尋",

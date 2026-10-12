@@ -46,7 +46,8 @@ function visibleProducts() {
 }
 
 function syncExclude(): void {
-  document.querySelectorAll("#exclude .chip").forEach((node) => node.remove());
+  const chipRoot = document.querySelector<HTMLElement>("#chips")!;
+  chipRoot.replaceChildren();
   prefs.exclude.forEach((word, index) => {
     const chip = document.createElement("span");
     chip.className = "chip";
@@ -58,7 +59,7 @@ function syncExclude(): void {
     remove.textContent = "×";
     remove.setAttribute("aria-label", fill(messages.removeKeyword, { word }));
     chip.append(text, remove);
-    excludeInput.before(chip);
+    chipRoot.append(chip);
   });
   presetButton.setAttribute("aria-pressed", String(prefs.preset));
 }

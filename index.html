@@ -6,14 +6,14 @@
     <title>比比猴 — 台灣購物比價</title>
     <meta
       name="description"
-      content="一次搜尋 momo、PChome、酷澎、Yahoo 奇摩購物中心和蝦皮，把價格由低到高排好。沒有廣告、沒有置頂。"
+      content="一次搜尋 momo、PChome、Yahoo 奇摩、全聯、東森、金石堂、三民等購物網站，把價格由低到高排好。沒有廣告、沒有置頂。"
     />
-    <meta name="theme-color" content="#F7F7F5" />
+    <meta name="theme-color" content="#13B7A2" />
     <link rel="canonical" href="https://bibisaru.pages.dev/" />
     <meta property="og:title" content="比比猴 — 台灣購物比價" />
     <meta
       property="og:description"
-      content="一次搜尋 momo、PChome、酷澎、Yahoo 奇摩購物中心和蝦皮，把價格由低到高排好。沒有廣告、沒有置頂。"
+      content="一次搜尋 momo、PChome、Yahoo 奇摩、全聯、東森、金石堂、三民等購物網站，把價格由低到高排好。沒有廣告、沒有置頂。"
     />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="zh_TW" />
@@ -39,8 +39,11 @@
   <body>
     <header>
       <a class="brand" href="/">
-        <img src="/mascot.png" alt="" width="40" height="40" />
-        <h1>比比猴</h1>
+        <img src="/mascot.png" alt="" width="56" height="56" />
+        <span class="brand-text">
+          <h1>比比猴</h1>
+          <p class="tagline">猴子都會用的比價網站</p>
+        </span>
       </a>
     </header>
     <main class="wrap">
@@ -61,7 +64,8 @@
       </form>
 
       <div class="ex" id="exclude">
-        <span class="ex-label" id="exclude-label">排除關鍵字</span>
+        <span class="sr" id="exclude-label">排除關鍵字</span>
+        <div class="chips" id="chips"></div>
         <input id="exclude-input" type="text" maxlength="20" placeholder="不想看到的字，例如：二手" autocomplete="off" aria-labelledby="exclude-label" />
         <button type="button" id="preset" aria-pressed="false">排除配件與二手</button>
       </div>
@@ -83,8 +87,8 @@
       <div id="stage" aria-live="polite">
         <div class="empty">
           <img src="/mascot.png" alt="" width="168" height="168" />
-          <p class="intro-title">輸入關鍵字，一次比較五家價格</p>
-          <p>momo、PChome、酷澎、Yahoo 奇摩購物中心、蝦皮。沒有廣告。</p>
+          <p class="intro-title">輸入關鍵字，一次比較各家價格</p>
+          <p>momo、PChome、Yahoo 奇摩、酷澎、蝦皮、全聯、東森、金石堂、三民、誠品。沒有廣告。</p>
         </div>
       </div>
       <footer>

@@ -1,13 +1,13 @@
 {
   "name": "比比猴",
   "short_name": "比比猴",
-  "description": "一次比較 momo、PChome、酷澎、Yahoo 奇摩購物中心和蝦皮的價格。",
+  "description": "一次比較 momo、PChome、Yahoo 奇摩、全聯、東森等購物網站的價格。",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "lang": "zh-Hant",
-  "background_color": "#FFF6EC",
-  "theme_color": "#F7F7F5",
+  "background_color": "#E8F7F5",
+  "theme_color": "#13B7A2",
   "icons": [
     { "src": "/icon-64.png", "sizes": "64x64", "type": "image/png" },
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
