@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>比比猴 — 台灣購物比價</title>
+    <meta
+      name="description"
+      content="一次搜尋 momo、PChome、酷澎、Yahoo 奇摩購物中心和蝦皮，把價格由低到高排好。沒有廣告、沒有置頂。"
+    />
+    <meta name="theme-color" content="#F7F7F5" />
+    <link rel="canonical" href="https://bibisaru.pages.dev/" />
+    <meta property="og:title" content="比比猴 — 台灣購物比價" />
+    <meta
+      property="og:description"
+      content="一次搜尋 momo、PChome、酷澎、Yahoo 奇摩購物中心和蝦皮，把價格由低到高排好。沒有廣告、沒有置頂。"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="zh_TW" />
+    <meta property="og:url" content="https://bibisaru.pages.dev/" />
+    <meta property="og:image" content="https://bibisaru.pages.dev/icon-512.png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:image:alt" content="比比猴，拿著放大鏡的猴子" />
+    <meta name="twitter:card" content="summary" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/icon-32.png" sizes="32x32" />
+    <link rel="icon" type="image/png" href="/icon-64.png" sizes="64x64" />
+    <link rel="apple-touch-icon" href="/icon-180.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;600;700;800&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/">
+        <img src="/mascot.png" alt="" width="40" height="40" />
+        <h1>比比猴</h1>
+      </a>
+    </header>
+    <main class="wrap">
+      <form id="search-form" action="/" method="get" role="search">
+        <label class="sr" for="q">關鍵字</label>
+        <div class="search">
+          <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2" />
+            <path d="M16 16.5 20 20.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          </svg>
+          <input id="q" name="q" type="search" enterkeyhint="search" maxlength="40" placeholder="想找什麼？例如：藍芽耳機" autocomplete="off" />
+          <button class="sbtn" type="submit" aria-label="搜尋">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12h12M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+        </div>
+      </form>
+
+      <div class="ex" id="exclude">
+        <span class="ex-label" id="exclude-label">排除關鍵字</span>
+        <input id="exclude-input" type="text" maxlength="20" placeholder="不想看到的字，例如：二手" autocomplete="off" aria-labelledby="exclude-label" />
+        <button type="button" id="preset" aria-pressed="false">排除配件與二手</button>
+      </div>
+
+      <div class="plats" id="platforms" role="group" aria-label="平台"></div>
+      <div class="bar" id="toolbar" hidden>
+        <div class="bar-left">
+          <span class="num" id="count"></span>
+          <span id="updated"></span>
+        </div>
+        <label class="sr" for="sort">排序</label>
+        <select id="sort" class="sort">
+          <option value="price-asc">價格 低→高</option>
+          <option value="price-desc">價格 高→低</option>
+          <option value="relevance">相關度</option>
+        </select>
+      </div>
+      <div id="notices"></div>
+      <div id="stage" aria-live="polite">
+        <div class="empty">
+          <img src="/mascot.png" alt="" width="168" height="168" />
+          <p class="intro-title">輸入關鍵字，一次比較五家價格</p>
+          <p>momo、PChome、酷澎、Yahoo 奇摩購物中心、蝦皮。沒有廣告。</p>
+        </div>
+      </div>
+      <footer>
+        <p>價格與庫存以各購物平台頁面為準。比比猴不販售商品，也沒有置頂廣告。</p>
+        <p>比的是各平台搜尋結果的前幾筆，不是該站全部商品。</p>
+      </footer>
+      <noscript><p class="noscript">比比猴需要 JavaScript 才能搜尋比價。</p></noscript>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

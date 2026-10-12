@@ -1,0 +1,24 @@
+{
+  "name": "bibisaru",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5173",
+    "build": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.functions.json --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 4173",
+    "test": "vitest run",
+    "test:live": "vitest run --config vitest.live.config.ts --reporter=verbose",
+    "pages:dev": "wrangler pages dev dist --port 8788"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261006.1",
+    "typescript": "^5.9.3",
+    "vite": "^6.3.6",
+    "vitest": "^3.2.4",
+    "wrangler": "^4.40.3"
+  }
+}
