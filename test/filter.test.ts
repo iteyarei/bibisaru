@@ -5,6 +5,8 @@ import {
   filterByPlatforms,
   filterByPrice,
   markLowest,
+  commitKeywordDraft,
+  keywordDraftHasDelimiter,
   parseKeywordDraft,
   parsePriceBound,
   prepareResults,
@@ -142,6 +144,22 @@ describe("keyword chips and query", () => {
     expect(parseKeywordDraft("二手, 保護殼，二手")).toEqual(["二手", "保護殼", "二手"]);
     expect(addKeywords([], parseKeywordDraft("二手, 保護殼，二手"))).toEqual(["二手", "保護殼"]);
     expect(addKeywords(["二手"], ["二手", "福利品"])).toEqual(["二手", "福利品"]);
+  });
+
+  it("splits on space and enumeration comma, and commits a leftover draft", () => {
+    expect(parseKeywordDraft("二手 殼")).toEqual(["二手", "殼"]);
+    expect(parseKeywordDraft("二手\u3000膜")).toEqual(["二手", "膜"]);
+    expect(parseKeywordDraft("二手、訂金")).toEqual(["二手", "訂金"]);
+    expect(keywordDraftHasDelimiter("二手 ")).toBe(true);
+    expect(keywordDraftHasDelimiter("二手、")).toBe(true);
+    expect(keywordDraftHasDelimiter("二手")).toBe(false);
+    expect(commitKeywordDraft(["殼"], "二手")).toEqual({ keywords: ["殼", "二手"], clear: true });
+    expect(commitKeywordDraft(["殼"], "二手 膜、訂金")).toEqual({
+      keywords: ["殼", "二手", "膜", "訂金"],
+      clear: true,
+    });
+    expect(commitKeywordDraft(["殼"], "")).toEqual({ keywords: ["殼"], clear: false });
+    expect(commitKeywordDraft(["殼"], "  ")).toEqual({ keywords: ["殼"], clear: true });
   });
 
   it("stops at 12 keywords and can remove a preset", () => {
