@@ -1,6 +1,7 @@
 import {
   addKeywords,
-  parseKeywordDraft,
+  commitKeywordDraft,
+  keywordDraftHasDelimiter,
   parsePriceBound,
   prepareResults,
   removeKeywords,
@@ -194,9 +195,9 @@ async function runSearch(raw: string, pushHistory: boolean): Promise<void> {
 }
 
 function commitExclude(): void {
-  const incoming = parseKeywordDraft(excludeInput.value);
-  if (!incoming.length && !/[,，]/.test(excludeInput.value)) return;
-  prefs.exclude = addKeywords(prefs.exclude, incoming);
+  const draft = commitKeywordDraft(prefs.exclude, excludeInput.value);
+  if (!draft.clear) return;
+  prefs.exclude = draft.keywords;
   prefs.preset = PRESET_EXCLUDE.every((word) => prefs.exclude.includes(word));
   excludeInput.value = "";
   syncExcludeClear();
@@ -227,6 +228,7 @@ function resetFilters(): void {
 function searchSimilar(title: string): void {
   const next = normalizeQuery(similarQuery(title));
   if (!next) return;
+  commitExclude();
   for (const id of PLATFORM_IDS) prefs.platforms[id] = true;
   savePrefs(prefs);
   syncPlatforms();
@@ -238,12 +240,19 @@ function searchSimilar(title: string): void {
 
 searchForm.addEventListener("submit", (event) => {
   event.preventDefault();
+  commitExclude();
   void runSearch(searchInput.value, true);
 });
 
+document.querySelector<HTMLFormElement>("#exclude")!.addEventListener("submit", (event) => {
+  event.preventDefault();
+  commitExclude();
+});
+
 excludeInput.addEventListener("keydown", (event) => {
-  if (event.isComposing) return;
-  if (event.key === "Enter" || event.key === ",") {
+  // Virtual keyboards often send keyCode 229 while composing and never a real Enter.
+  if (event.isComposing || event.keyCode === 229) return;
+  if (event.key === "Enter") {
     event.preventDefault();
     commitExclude();
   } else if (event.key === "Backspace" && excludeInput.value === "" && prefs.exclude.length) {
@@ -255,8 +264,17 @@ excludeInput.addEventListener("keydown", (event) => {
   }
 });
 
-excludeInput.addEventListener("input", () => {
-  if (/[,，]/.test(excludeInput.value)) commitExclude();
+excludeInput.addEventListener("input", (event) => {
+  if (event instanceof InputEvent && event.isComposing) return;
+  if (keywordDraftHasDelimiter(excludeInput.value)) commitExclude();
+});
+
+excludeInput.addEventListener("compositionend", () => {
+  if (keywordDraftHasDelimiter(excludeInput.value)) commitExclude();
+});
+
+excludeInput.addEventListener("blur", () => {
+  commitExclude();
 });
 
 document.querySelector("#exclude")!.addEventListener("click", (event) => {

@@ -105,11 +105,34 @@ export function prepareResults(
   return markLowest(sortProducts(byPrice, options.sort, options.query));
 }
 
+/** Space, comma, or enumeration comma. Mobile keyboards insert these without a reliable keydown. */
+const KEYWORD_DELIMITER = /[\s,，、]/;
+
+export function keywordDraftHasDelimiter(raw: string): boolean {
+  return KEYWORD_DELIMITER.test(raw);
+}
+
 export function parseKeywordDraft(raw: string): string[] {
   return raw
-    .split(/[,，]/)
+    .split(/[\s,，、]+/)
     .map((part) => part.trim())
     .filter((part) => part.length > 0 && part.length <= 20);
+}
+
+/**
+ * Turn the exclude box into chips.
+ * An empty field stays as-is. A delimiter-only field is cleared.
+ * Plain text with no delimiter is still committed, so blur, Enter, and search can keep it.
+ */
+export function commitKeywordDraft(
+  existing: readonly string[],
+  raw: string,
+): { keywords: string[]; clear: boolean } {
+  const incoming = parseKeywordDraft(raw);
+  if (!incoming.length && !raw.trim()) {
+    return { keywords: [...existing], clear: keywordDraftHasDelimiter(raw) };
+  }
+  return { keywords: addKeywords(existing, incoming), clear: true };
 }
 
 export function addKeywords(existing: readonly string[], incoming: readonly string[], max = 12): string[] {

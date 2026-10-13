@@ -70,17 +70,17 @@
       </form>
       <p class="search-hint">多個關鍵字用空格分開，商品要全部符合</p>
 
-      <div class="ex" id="exclude">
+      <form class="ex" id="exclude" action="/" method="get">
         <span class="sr" id="exclude-label">排除關鍵字</span>
         <div class="chips" id="chips"></div>
-        <input id="exclude-input" type="text" maxlength="20" placeholder="不想看到的字，例如：二手" autocomplete="off" aria-labelledby="exclude-label" />
+        <input id="exclude-input" type="text" maxlength="20" enterkeyhint="done" placeholder="不想看到的字，例如：二手" autocomplete="off" aria-labelledby="exclude-label" />
         <button type="button" class="clear" id="clear-exclude" hidden aria-label="清除">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M7 7l10 10M17 7 7 17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
           </svg>
         </button>
         <button type="button" id="preset" aria-pressed="false">排除配件與二手</button>
-      </div>
+      </form>
 
       <div class="plats" id="platforms" role="group" aria-label="平台"></div>
       <div class="bar" id="toolbar" hidden>
