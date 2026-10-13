@@ -52,7 +52,7 @@ export const zhTW = {
   loading: "搜尋中",
   footer: "價格與庫存以各購物平台頁面為準。比比猴不販售商品，也沒有置頂廣告。",
   footnoteLimit: "比的是各平台搜尋結果的前幾筆，不是該站全部商品。",
-  affiliateNote: "部分連結為分潤連結，不影響您的購買價格。",
+  affiliateNote: "部分連結為分潤連結（含蝦皮、酷澎），不影響您的購買價格。",
   openProduct: "{lowest}在{name}開啟「{title}」，{price}",
   noscript: "比比猴需要 JavaScript 才能搜尋比價。",
 } as const;

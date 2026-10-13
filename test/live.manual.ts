@@ -45,7 +45,14 @@ describe("live platform adapters", () => {
       expect(coupang.count).toBe(0);
       expect(response.results.some((product) => product.platform === "coupang")).toBe(false);
     }
-    expect(coupang?.searchUrl).toContain("https://www.tw.coupang.com/np/search?q=");
+    expect(coupang?.searchUrl).toBe(
+      `https://link.tw.coupang.com/re2/AFFKOLSRP?lptag=AF6766993&pageKey=${encodeURIComponent("耳機")}`,
+    );
+    if (coupang?.status === "ok") {
+      for (const product of response.results.filter((item) => item.platform === "coupang")) {
+        expect(product.url.startsWith("https://link.tw.coupang.com/re2/")).toBe(true);
+      }
+    }
 
     const shopee = response.platforms.find((item) => item.id === "shopee");
     expect(shopee?.status).toBe("unavailable");
