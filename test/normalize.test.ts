@@ -184,9 +184,11 @@ describe("normalizeCoupang", () => {
     expect(product.title).toBe("真無線耳機");
     expect(product.image).toBe("https://thumbnail.coupangcdn.com/thumbnails/remote/a.jpg");
     const url = new URL(product.url);
-    expect(url.hostname).toBe("www.tw.coupang.com");
-    expect(url.pathname).toBe("/products/earbuds-1");
+    expect(url.origin + url.pathname).toBe("https://link.tw.coupang.com/re2/AFFSDP");
+    expect(url.searchParams.get("lptag")).toBe("AF6766993");
+    expect(url.searchParams.get("pageKey")).toBe("earbuds-1");
     expect(url.searchParams.get("itemId")).toBe("2");
+    expect(url.searchParams.has("traceid")).toBe(false);
   });
 });
 
