@@ -1,3 +1,4 @@
+import { segmentCjkKeyword } from "./segment";
 import { normalizeMatchText } from "./text";
 
 /**
@@ -67,9 +68,37 @@ function formInTitle(title: string, compactTitle: string, form: string): boolean
   return plain.length > 0 && norm(title).includes(plain);
 }
 
+/** A space-free CJK keyword longer than two characters can be split. Latin and short words stay whole. */
+function isSegmentableCjk(form: string): boolean {
+  const plain = norm(form);
+  if (!plain || plain.includes(" ")) return false;
+  const folded = compact(form);
+  return folded.length > 2 && /^\p{Script=Han}+$/u.test(folded);
+}
+
+function segmentedFormInTitle(compactTitle: string, form: string): boolean {
+  if (!isSegmentableCjk(form)) return false;
+  const segments = segmentCjkKeyword(compact(form));
+  if (segments.length < 2) return false;
+  return segments.every((segment) => segment.length > 0 && compactTitle.includes(segment));
+}
+
+export type TokenMatch = "exact" | "segment" | "none";
+
+/**
+ * Exact means some synonym form sits in the title as one contiguous string.
+ * Segment is the fallback for a long CJK keyword: every piece must appear, in any order.
+ */
+export function tokenMatchKind(title: string, token: string): TokenMatch {
+  const compactTitle = compact(title);
+  const forms = tokenForms(token);
+  if (forms.some((form) => formInTitle(title, compactTitle, form))) return "exact";
+  if (forms.some((form) => segmentedFormInTitle(compactTitle, form))) return "segment";
+  return "none";
+}
+
 export function titleHasEveryTerm(title: string, query: string): boolean {
   const tokens = searchTokens(query);
   if (!tokens.length) return true;
-  const compactTitle = compact(title);
-  return tokens.every((token) => tokenForms(token).some((form) => formInTitle(title, compactTitle, form)));
+  return tokens.every((token) => tokenMatchKind(title, token) !== "none");
 }

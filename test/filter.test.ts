@@ -90,6 +90,40 @@ describe("sort and lowest price", () => {
     ]);
   });
 
+  it("ranks a contiguous CJK title above a segmented one", () => {
+    const products = [
+      item({
+        platform: "momo",
+        title: "大同 不鏽鋼電鍋",
+        price: 1000,
+        rank: 0,
+        url: "https://www.momoshop.com.tw/1",
+      }),
+      item({
+        platform: "pchome",
+        title: "大同10人份電鍋",
+        price: 2000,
+        rank: 1,
+        url: "https://24h.pchome.com.tw/prod/2",
+      }),
+      item({
+        platform: "yahoo",
+        title: "大同電鍋 10人份",
+        price: 3000,
+        rank: 9,
+        url: "https://tw.buy.yahoo.com/gdsale/3.html",
+      }),
+    ];
+    expect(sortProducts(products, "relevance", "大同電鍋").map((product) => product.title)).toEqual([
+      "大同電鍋 10人份",
+      "大同 不鏽鋼電鍋",
+      "大同10人份電鍋",
+    ]);
+    expect(sortProducts(products, "price-asc", "大同電鍋").map((product) => product.price)).toEqual([
+      1000, 2000, 3000,
+    ]);
+  });
+
   it("marks every item tied for the lowest price", () => {
     const marked = markLowest([
       item({ platform: "momo", title: "a", price: 10, url: "https://www.momoshop.com.tw/1" }),
