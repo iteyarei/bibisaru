@@ -1,4 +1,4 @@
-import { titleHasEveryTerm } from "./synonyms";
+import { searchTokens, titleHasEveryTerm, tokenMatchKind } from "./synonyms";
 import { normalizeMatchText } from "./text";
 import type { PlatformId, Product, SortMode } from "./types";
 
@@ -11,7 +11,7 @@ export function filterByKeywords(products: readonly Product[], keywords: readonl
   });
 }
 
-/** Every search term must appear in the title. Synonym rows count as the same term. */
+/** Every search term must appear in the title. Synonym rows count as the same term. A long CJK term may match as separate pieces. */
 export function filterBySearchTerms(products: readonly Product[], query: string): Product[] {
   const tokens = query.trim();
   if (!tokens) return [...products];
@@ -60,8 +60,10 @@ function relevanceScore(title: string, query: string): number {
   const normalizedQuery = normalizeMatchText(query);
   if (!normalizedQuery) return 0;
   let score = normalizedTitle.includes(normalizedQuery) ? 5 : 0;
-  for (const token of normalizedQuery.split(/\s+/)) {
-    if (token && normalizedTitle.includes(token)) score += 1;
+  for (const token of searchTokens(query)) {
+    const kind = tokenMatchKind(title, token);
+    if (kind === "exact") score += 2;
+    else if (kind === "segment") score += 1;
   }
   return score;
 }

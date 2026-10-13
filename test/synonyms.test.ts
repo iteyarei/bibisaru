@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { filterBySearchTerms, prepareResults } from "../shared/filter";
-import { searchTokens, titleHasEveryTerm } from "../shared/synonyms";
+import { PLATFORM_IDS, rawSearchUrl } from "../shared/platforms";
+import { segmentCjkKeyword } from "../shared/segment";
+import { searchPlatforms, unavailableResult } from "../shared/search";
+import { searchTokens, titleHasEveryTerm, tokenMatchKind } from "../shared/synonyms";
 import type { Product } from "../shared/types";
 
 function item(title: string, price = 1000): Product {
@@ -68,6 +71,29 @@ describe("and match with synonyms", () => {
     expect(titleHasEveryTerm("Galaxy Z Fold8 (12G/512G)", "samsung fold8 512")).toBe(false);
   });
 
+  it("splits a long CJK keyword when the pieces are not contiguous", () => {
+    expect(segmentCjkKeyword("大同電鍋")).toEqual(["大同", "電鍋"]);
+    expect(segmentCjkKeyword("象印熱水瓶")).toEqual(["象印", "熱水瓶"]);
+    expect(segmentCjkKeyword("國際牌冰箱")).toEqual(["國際牌", "冰箱"]);
+    expect(segmentCjkKeyword("鬼武者")).toEqual(["鬼武", "武者"]);
+
+    expect(titleHasEveryTerm("大同 不鏽鋼電鍋", "大同電鍋")).toBe(true);
+    expect(titleHasEveryTerm("大同10人份電鍋", "大同電鍋")).toBe(true);
+    expect(titleHasEveryTerm("大同電鍋", "大同電鍋")).toBe(true);
+    expect(titleHasEveryTerm("大同　不鏽鋼電鍋", "大同電鍋")).toBe(true);
+    expect(titleHasEveryTerm("電鍋 大同", "大同電鍋")).toBe(true);
+
+    expect(titleHasEveryTerm("象印電鍋", "大同電鍋")).toBe(false);
+    expect(titleHasEveryTerm("大同冰箱", "大同電鍋")).toBe(false);
+    expect(titleHasEveryTerm("不鏽鋼鍋", "大同電鍋")).toBe(false);
+    expect(titleHasEveryTerm("大同 不鏽鋼電鍋", "大同電鍋 10人份")).toBe(false);
+    expect(titleHasEveryTerm("大不鏽鋼同", "大同")).toBe(false);
+
+    expect(tokenMatchKind("大同電鍋 10人份", "大同電鍋")).toBe("exact");
+    expect(tokenMatchKind("大同 不鏽鋼電鍋", "大同電鍋")).toBe("segment");
+    expect(tokenMatchKind("象印電鍋", "大同電鍋")).toBe("none");
+  });
+
   it("recomputes the lowest price after dropping titles that miss a word", () => {
     const visible = prepareResults(
       [item("鬼武者", 500), item("鬼武者 Switch 2", 1800), item("鬼武者 NS2", 2400)],
@@ -81,5 +107,33 @@ describe("and match with synonyms", () => {
     expect(visible.map((product) => product.price)).toEqual([1800, 2400]);
     expect(visible[0]?.lowest).toBe(true);
     expect(visible[1]?.lowest).toBe(false);
+  });
+});
+
+describe("shop queries stay whole", () => {
+  it("sends the original keyword upstream", async () => {
+    const seen: string[] = [];
+    const response = await searchPlatforms(
+      "大同電鍋",
+      ["momo", "shopee"],
+      {
+        momo: async (query) => {
+          seen.push(query);
+          return unavailableResult("momo", query);
+        },
+        shopee: async (query) => {
+          seen.push(query);
+          return unavailableResult("shopee", query);
+        },
+      },
+    );
+    expect(seen).toEqual(["大同電鍋", "大同電鍋"]);
+    expect(response.query).toBe("大同電鍋");
+    const encoded = encodeURIComponent("大同電鍋");
+    for (const id of PLATFORM_IDS) {
+      expect(rawSearchUrl(id, "大同電鍋")).toContain(encoded);
+    }
+    expect(rawSearchUrl("shopee", "大同電鍋")).toBe(`https://shopee.tw/search?keyword=${encoded}`);
+    expect(rawSearchUrl("momo", "大同電鍋")).toBe(`https://www.momoshop.com.tw/search/${encoded}`);
   });
 });
