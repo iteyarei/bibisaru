@@ -13,6 +13,7 @@ export async function searchPlatforms(
   ids: readonly PlatformId[],
   fetchers: Partial<Record<PlatformId, PlatformFetcher>>,
   now: () => Date = () => new Date(),
+  colo = "",
 ): Promise<SearchResponse> {
   const settled = await Promise.all(
     ids.map(async (id) => {
@@ -42,5 +43,6 @@ export async function searchPlatforms(
     fetchedAt: now().toISOString(),
     results: settled.flatMap((result) => (result.status === "ok" ? result.products : [])),
     platforms,
+    meta: { colo },
   };
 }

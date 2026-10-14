@@ -33,11 +33,17 @@ export interface PlatformReport {
   reason?: string;
 }
 
+export interface SearchMeta {
+  /** Cloudflare colo that served this search, such as TPE. Empty outside the edge. */
+  colo: string;
+}
+
 export interface SearchResponse {
   query: string;
   fetchedAt: string;
   results: Product[];
   platforms: PlatformReport[];
+  meta: SearchMeta;
 }
 
 export interface PlatformResult {

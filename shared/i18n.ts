@@ -42,6 +42,8 @@ export const zhTW = {
   introTitle: "輸入關鍵字，一次比較各家價格",
   introBody: "momo、PChome、Yahoo 奇摩、酷澎、蝦皮、全聯、東森、金石堂、三民。沒有廣告。",
   unavailable: "{name}暫時無法取得",
+  unavailableReason: "原因：{reason} · {colo}",
+  unavailableReasonOnly: "原因：{reason}",
   platformEmpty: "{name}沒有相符商品",
   goSearch: "前往搜尋",
   noData: "這次沒有取得商品，可以直接前往各平台搜尋",
@@ -64,6 +66,15 @@ export const PRESET_EXCLUDE = ["殼", "套", "膜", "訂金", "二手", "福利�
 
 export function fill(template: string, vars: Record<string, string | number>): string {
   return template.replace(/\{(\w+)\}/g, (_match, key: string) => String(vars[key] ?? ""));
+}
+
+/** Small gray line under a 暫時無法取得 card. Colo is the Cloudflare airport code. */
+export function unavailableNote(reason: string | undefined, colo: string | undefined): string {
+  const why = reason?.trim() ?? "";
+  const where = colo?.trim() ?? "";
+  if (why && where) return fill(messages.unavailableReason, { reason: why, colo: where });
+  if (why) return fill(messages.unavailableReasonOnly, { reason: why });
+  return where;
 }
 
 export function formatPrice(amount: number): string {
