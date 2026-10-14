@@ -122,11 +122,15 @@ const fetchMomo: PlatformFetcher = async (query) => {
 
 const fetchCoupang: PlatformFetcher = async (query) => {
   try {
-    const products = await searchCoupangPartners(query);
-    if (!products) return unavailableResult("coupang", query);
-    return ok("coupang", query, products);
-  } catch {
-    return unavailableResult("coupang", query);
+    const outcome = await searchCoupangPartners(query);
+    if (!outcome.products) {
+      return { ...unavailableResult("coupang", query), reason: outcome.reason ?? "exception: unknown" };
+    }
+    return ok("coupang", query, outcome.products);
+  } catch (error) {
+    const message = error instanceof Error ? error.message.replace(/[\r\n]+/g, " ").trim() : "unknown";
+    const clipped = message.length > 120 ? message.slice(0, 120) : message;
+    return { ...unavailableResult("coupang", query), reason: `exception: ${clipped || "unknown"}` };
   }
 };
 

@@ -9,9 +9,14 @@ export const COUPANG_SEARCH_LIMIT = 10;
 
 const COUPANG_HOST = /(^|\.)coupang\.com$/i;
 
-function envValue(name: string): string | undefined {
+function rawEnv(name: string): string | null | undefined {
   const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
-  return env?.[name]?.trim() || undefined;
+  return env?.[name];
+}
+
+/** Drop embedded newlines, then trim. Pages secrets are often pasted with a trailing line break. */
+export function cleanCoupangKey(value: string | null | undefined): string {
+  return (value ?? "").replace(/[\r\n]+/g, "").trim();
 }
 
 /** UTC timestamp in the Partners format `yyMMdd'T'HHmmss'Z'`. */
@@ -114,11 +119,45 @@ export interface CoupangSearchOptions {
   secretKey?: string | null;
 }
 
-function resolveKeys(options: CoupangSearchOptions): { accessKey: string; secretKey: string } | null {
-  const accessKey = (options.accessKey === undefined ? envValue("COUPANG_ACCESS_KEY") : options.accessKey)?.trim() ?? "";
-  const secretKey = (options.secretKey === undefined ? envValue("COUPANG_SECRET_KEY") : options.secretKey)?.trim() ?? "";
-  if (!accessKey || !secretKey) return null;
-  return { accessKey, secretKey };
+export interface CoupangSearchOutcome {
+  products: Product[] | null;
+  /** Set only on failure. Safe to return in the API response. */
+  reason?: string;
+}
+
+const REASON_LIMIT = 120;
+
+function keyMaterial(options: CoupangSearchOptions): {
+  accessKey: string;
+  secretKey: string;
+  accessPresent: boolean;
+  secretPresent: boolean;
+} {
+  const accessKey = cleanCoupangKey(options.accessKey === undefined ? rawEnv("COUPANG_ACCESS_KEY") : options.accessKey);
+  const secretKey = cleanCoupangKey(options.secretKey === undefined ? rawEnv("COUPANG_SECRET_KEY") : options.secretKey);
+  return {
+    accessKey,
+    secretKey,
+    accessPresent: accessKey.length > 0,
+    secretPresent: secretKey.length > 0,
+  };
+}
+
+function missingKeysReason(accessPresent: boolean, secretPresent: boolean): string {
+  return `missing_keys COUPANG_ACCESS_KEY=${accessPresent} COUPANG_SECRET_KEY=${secretPresent}`;
+}
+
+function publicText(text: string, secrets: readonly string[]): string {
+  let out = text.replace(/[\r\n]+/g, " ");
+  const needles = secrets.filter((secret) => secret.length >= 8).sort((a, b) => b.length - a.length);
+  for (const secret of needles) out = out.split(secret).join("[redacted]");
+  out = out.trim();
+  return out.length > REASON_LIMIT ? out.slice(0, REASON_LIMIT) : out;
+}
+
+function exceptionReason(error: unknown, secrets: readonly string[]): string {
+  const message = error instanceof Error ? error.message : "unknown";
+  return `exception: ${publicText(message, secrets) || "unknown"}`;
 }
 
 function withEdgeCache(init: RequestInit): RequestInit {
@@ -130,18 +169,25 @@ function withEdgeCache(init: RequestInit): RequestInit {
 
 /**
  * Search Coupang through the Partners Open API.
- * Returns `null` when the keys are missing or the call fails, so the caller can
- * show 暫時無法取得 and the affiliate search link. Keys are never written to logs.
+ * `products` is null when the keys are missing or the call fails. `reason` explains
+ * that failure without ever including key values.
  */
-export async function searchCoupangPartners(keyword: string, options: CoupangSearchOptions = {}): Promise<Product[] | null> {
-  const keys = resolveKeys(options);
+export async function searchCoupangPartners(
+  keyword: string,
+  options: CoupangSearchOptions = {},
+): Promise<CoupangSearchOutcome> {
+  const keys = keyMaterial(options);
+  if (!keys.accessPresent || !keys.secretPresent) {
+    return { products: null, reason: missingKeysReason(keys.accessPresent, keys.secretPresent) };
+  }
   const trimmed = keyword.trim();
-  if (!keys || !trimmed) return null;
+  if (!trimmed) return { products: null, reason: "exception: empty keyword" };
+  const secrets = [keys.accessKey, keys.secretKey];
   const query = coupangSearchQuery(trimmed);
-  const signedDate = coupangSignedDate(options.now ?? new Date());
-  const signature = await coupangHmacHex(keys.secretKey, coupangSignMessage(signedDate, query));
-  const url = `${COUPANG_API_ORIGIN}${COUPANG_API_PATH}?${query}`;
   try {
+    const signedDate = coupangSignedDate(options.now ?? new Date());
+    const signature = await coupangHmacHex(keys.secretKey, coupangSignMessage(signedDate, query));
+    const url = `${COUPANG_API_ORIGIN}${COUPANG_API_PATH}?${query}`;
     const response = await (options.fetchImpl ?? fetch)(
       url,
       withEdgeCache({
@@ -154,9 +200,26 @@ export async function searchCoupangPartners(keyword: string, options: CoupangSea
         signal: AbortSignal.timeout(8_000),
       }),
     );
-    if (!response.ok) return null;
-    return productsFromCoupangSearch(JSON.parse(await response.text()) as unknown);
-  } catch {
-    return null;
+    if (!response.ok) return { products: null, reason: `http_${response.status}` };
+    const text = await response.text();
+    let payload: unknown;
+    try {
+      payload = JSON.parse(text) as unknown;
+    } catch (error) {
+      return { products: null, reason: exceptionReason(error, secrets) };
+    }
+    const root = payload && typeof payload === "object" && !Array.isArray(payload)
+      ? (payload as Record<string, unknown>)
+      : null;
+    if (!root || String(root.rCode) !== "0") {
+      const code = root ? String(root.rCode) : "missing";
+      const message = typeof root?.rMessage === "string" ? root.rMessage : "";
+      return { products: null, reason: `rcode_${code}: ${publicText(message, secrets)}` };
+    }
+    const products = productsFromCoupangSearch(payload);
+    if (!products) return { products: null, reason: "exception: invalid payload" };
+    return { products };
+  } catch (error) {
+    return { products: null, reason: exceptionReason(error, secrets) };
   }
 }

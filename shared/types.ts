@@ -30,6 +30,8 @@ export interface PlatformReport {
   status: PlatformStatus;
   count: number;
   searchUrl: string;
+  /** Coupang-only failure diagnostic. Never contains key material. */
+  reason?: string;
 }
 
 export interface SearchResponse {
@@ -44,6 +46,8 @@ export interface PlatformResult {
   status: "ok" | "unavailable";
   products: Product[];
   searchUrl: string;
+  /** Coupang-only failure diagnostic. Never contains key material. */
+  reason?: string;
 }
 
 export type PlatformFetcher = (query: string) => Promise<PlatformResult>;

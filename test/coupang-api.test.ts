@@ -12,6 +12,7 @@ import {
   searchCoupangPartners,
 } from "../shared/coupang-api";
 import { prepareResults } from "../shared/filter";
+import { searchPlatforms } from "../shared/search";
 import { fetchers } from "../functions/lib/providers";
 
 /**
@@ -115,12 +116,14 @@ describe("coupang partners search", () => {
       });
     };
 
-    const products = await searchCoupangPartners("電鍋", {
+    const outcome = await searchCoupangPartners("電鍋", {
       fetchImpl,
       now: new Date("2026-01-01T00:00:00.000Z"),
-      accessKey: ACCESS_KEY,
-      secretKey: SIGNATURE_VECTOR.secret,
+      accessKey: `\r\n${ACCESS_KEY}\n`,
+      secretKey: `\n${SIGNATURE_VECTOR.secret}  `,
     });
+    expect(outcome.reason).toBeUndefined();
+    const products = outcome.products;
 
     expect(seen).toHaveLength(1);
     const call = seen[0];
@@ -160,14 +163,50 @@ describe("coupang partners search", () => {
   it("treats HTTP 200 with rCode other than 0 as failure", async () => {
     const fetchImpl: typeof fetch = async () =>
       new Response(JSON.stringify({ rCode: "400", rMessage: "bad request", data: {} }), { status: 200 });
-    const products = await searchCoupangPartners("電鍋", {
+    const outcome = await searchCoupangPartners("電鍋", {
       fetchImpl,
       now: new Date("2026-01-01T00:00:00.000Z"),
       accessKey: ACCESS_KEY,
       secretKey: SIGNATURE_VECTOR.secret,
     });
-    expect(products).toBeNull();
+    expect(outcome.products).toBeNull();
+    expect(outcome.reason).toBe("rcode_400: bad request");
     expect(productsFromCoupangSearch({ rCode: "0", data: { productData: [] } })).toEqual([]);
+  });
+
+  it("reports http status, a clipped rMessage, and exceptions without key values", async () => {
+    const httpFetch: typeof fetch = async () => new Response("nope", { status: 403 });
+    const httpOutcome = await searchCoupangPartners("電鍋", {
+      fetchImpl: httpFetch,
+      accessKey: ACCESS_KEY,
+      secretKey: SIGNATURE_VECTOR.secret,
+    });
+    expect(httpOutcome).toEqual({ products: null, reason: "http_403" });
+
+    const longMessage = `${"x".repeat(80)} ${SIGNATURE_VECTOR.secret} ${"y".repeat(80)}`;
+    const rcodeFetch: typeof fetch = async () =>
+      new Response(JSON.stringify({ rCode: "9", rMessage: longMessage }), { status: 200 });
+    const rcodeOutcome = await searchCoupangPartners("電鍋", {
+      fetchImpl: rcodeFetch,
+      accessKey: ACCESS_KEY,
+      secretKey: SIGNATURE_VECTOR.secret,
+    });
+    expect(rcodeOutcome.products).toBeNull();
+    expect(rcodeOutcome.reason?.startsWith("rcode_9: ")).toBe(true);
+    expect(rcodeOutcome.reason?.includes(SIGNATURE_VECTOR.secret)).toBe(false);
+    expect(rcodeOutcome.reason?.includes(ACCESS_KEY)).toBe(false);
+    expect((rcodeOutcome.reason ?? "").slice("rcode_9: ".length).length).toBeLessThanOrEqual(120);
+
+    const boomFetch: typeof fetch = async () => {
+      throw new Error(`socket ${SIGNATURE_VECTOR.secret}`);
+    };
+    const boom = await searchCoupangPartners("電鍋", {
+      fetchImpl: boomFetch,
+      accessKey: ACCESS_KEY,
+      secretKey: SIGNATURE_VECTOR.secret,
+    });
+    expect(boom.reason).toBe("exception: socket [redacted]");
+    expect(boom.reason?.includes(SIGNATURE_VECTOR.secret)).toBe(false);
   });
 
   it("does not call fetch when the keys are missing", async () => {
@@ -178,18 +217,38 @@ describe("coupang partners search", () => {
     };
     expect(
       await searchCoupangPartners("電鍋", { fetchImpl, accessKey: null, secretKey: SIGNATURE_VECTOR.secret }),
-    ).toBeNull();
+    ).toEqual({
+      products: null,
+      reason: "missing_keys COUPANG_ACCESS_KEY=false COUPANG_SECRET_KEY=true",
+    });
     expect(
-      await searchCoupangPartners("電鍋", { fetchImpl, accessKey: "  ", secretKey: "  " }),
-    ).toBeNull();
+      await searchCoupangPartners("電鍋", { fetchImpl, accessKey: "  \n", secretKey: "\r\n" }),
+    ).toEqual({
+      products: null,
+      reason: "missing_keys COUPANG_ACCESS_KEY=false COUPANG_SECRET_KEY=false",
+    });
     expect(called).toBe(false);
 
     delete envBag().COUPANG_ACCESS_KEY;
     delete envBag().COUPANG_SECRET_KEY;
+    envBag().COUPANG_ACCESS_KEY = "only-access\n";
+    const partial = await fetchers.coupang("電鍋");
+    expect(partial.status).toBe("unavailable");
+    expect(partial.products).toEqual([]);
+    expect(partial.searchUrl).toBe(coupangSearchAffiliateUrl("電鍋"));
+    expect(partial.reason).toBe("missing_keys COUPANG_ACCESS_KEY=true COUPANG_SECRET_KEY=false");
+    expect(partial.reason?.includes("only-access")).toBe(false);
+
+    delete envBag().COUPANG_ACCESS_KEY;
     const result = await fetchers.coupang("電鍋");
-    expect(result.status).toBe("unavailable");
-    expect(result.products).toEqual([]);
-    expect(result.searchUrl).toBe(coupangSearchAffiliateUrl("電鍋"));
+    expect(result.reason).toBe("missing_keys COUPANG_ACCESS_KEY=false COUPANG_SECRET_KEY=false");
+    const response = await searchPlatforms("電鍋", ["coupang"], { coupang: fetchers.coupang });
+    expect(response.platforms[0]).toMatchObject({
+      id: "coupang",
+      status: "unavailable",
+      count: 0,
+      reason: "missing_keys COUPANG_ACCESS_KEY=false COUPANG_SECRET_KEY=false",
+    });
     expect(called).toBe(false);
   });
 });

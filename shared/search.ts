@@ -23,12 +23,16 @@ export async function searchPlatforms(
     }),
   );
 
-  const platforms: PlatformReport[] = settled.map((result) => ({
-    id: result.id,
-    status: result.status === "ok" && result.products.length === 0 ? "empty" : result.status,
-    count: result.status === "ok" ? result.products.length : 0,
-    searchUrl: result.searchUrl,
-  }));
+  const platforms: PlatformReport[] = settled.map((result) => {
+    const report: PlatformReport = {
+      id: result.id,
+      status: result.status === "ok" && result.products.length === 0 ? "empty" : result.status,
+      count: result.status === "ok" ? result.products.length : 0,
+      searchUrl: result.searchUrl,
+    };
+    if (result.reason) report.reason = result.reason;
+    return report;
+  });
 
   return {
     query,
