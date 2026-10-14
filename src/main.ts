@@ -10,6 +10,7 @@ import { fill, formatCount, formatUpdated, messages, PRESET_EXCLUDE } from "../s
 import { PLATFORM_IDS, PLATFORMS, platformById } from "../shared/platforms";
 import { normalizeQuery } from "../shared/query";
 import { similarQuery } from "../shared/similar";
+import { pickSplurgeName, SPLURGE_ROLL_MS } from "../shared/splurge";
 import type { PlatformId, SearchResponse, SortMode } from "../shared/types";
 import { bindClearButton } from "./clear-field";
 import { defaultPrefs, loadPrefs, savePrefs, type Prefs } from "./prefs";
@@ -26,6 +27,7 @@ let requestId = 0;
 const searchForm = document.querySelector<HTMLFormElement>("#search-form")!;
 const searchInput = document.querySelector<HTMLInputElement>("#q")!;
 const searchButton = searchForm.querySelector<HTMLButtonElement>(".sbtn")!;
+const splurgeButton = document.querySelector<HTMLButtonElement>("#splurge")!;
 const syncSearchClear = bindClearButton(searchInput, document.querySelector<HTMLButtonElement>("#clear-q")!);
 const excludeInput = document.querySelector<HTMLInputElement>("#exclude-input")!;
 const syncExcludeClear = bindClearButton(
@@ -238,6 +240,23 @@ function searchSimilar(title: string): void {
   window.scrollTo(0, 0);
   void runSearch(next, true);
 }
+
+let lastSplurge = "";
+splurgeButton.setAttribute("aria-label", messages.splurgeLabel);
+splurgeButton.addEventListener("click", () => {
+  if (splurgeButton.disabled) return;
+  splurgeButton.disabled = true;
+  splurgeButton.classList.add("rolling");
+  window.setTimeout(() => {
+    const next = pickSplurgeName(lastSplurge);
+    lastSplurge = next;
+    searchInput.value = next;
+    syncSearchClear();
+    searchInput.focus({ preventScroll: true });
+    splurgeButton.classList.remove("rolling");
+    splurgeButton.disabled = false;
+  }, SPLURGE_ROLL_MS);
+});
 
 searchForm.addEventListener("submit", (event) => {
   event.preventDefault();

@@ -48,26 +48,32 @@
       </a>
     </header>
     <main class="wrap">
-      <form id="search-form" action="/" method="get" role="search">
-        <label class="sr" for="q">關鍵字</label>
-        <div class="search">
-          <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2" />
-            <path d="M16 16.5 20 20.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-          </svg>
-          <input id="q" name="q" type="search" enterkeyhint="search" maxlength="40" placeholder="想找什麼？例如：藍芽耳機" autocomplete="off" />
-          <button type="button" class="clear" id="clear-q" hidden aria-label="清除">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M7 7l10 10M17 7 7 17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+      <div class="search-row">
+        <form id="search-form" action="/" method="get" role="search">
+          <label class="sr" for="q">關鍵字</label>
+          <div class="search">
+            <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2" />
+              <path d="M16 16.5 20 20.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
             </svg>
-          </button>
-          <button class="sbtn" type="submit" aria-label="搜尋">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 12h12M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </button>
-        </div>
-      </form>
+            <input id="q" name="q" type="search" enterkeyhint="search" maxlength="40" placeholder="想找什麼？例如：藍芽耳機" autocomplete="off" />
+            <button type="button" class="clear" id="clear-q" hidden aria-label="清除">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 7l10 10M17 7 7 17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+              </svg>
+            </button>
+            <button class="sbtn" type="submit" aria-label="搜尋">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 12h12M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
+          </div>
+        </form>
+        <button type="button" id="splurge" class="splurge" aria-label="就想亂花錢，隨機填入商品關鍵字，不會立刻搜尋">
+          <span class="dice" aria-hidden="true"><span class="die die-a">🎲</span><span class="die die-b">🎲</span></span>
+          <span>就想亂花錢</span>
+        </button>
+      </div>
       <p class="search-hint">多個關鍵字用空格分開，商品要全部符合</p>
 
       <form class="ex" id="exclude" action="/" method="get">
