@@ -108,7 +108,8 @@ header {
 }
 
 .search-row form {
-  flex: 1 1 280px;
+  flex: 1 1 auto;
+  width: 100%;
   min-width: 0;
 }
 
@@ -117,21 +118,24 @@ header {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  height: 44px;
-  padding: 0 16px;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px;
   border: 0;
   border-radius: 999px;
   background: #e53935;
   color: #fff;
   font: inherit;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 800;
   line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
   overflow: visible;
   appearance: none;
 }
+
+.splurge-short { display: none; }
 
 .splurge:hover,
 .splurge:focus-visible { background: #c62828; }
@@ -202,7 +206,16 @@ header {
 }
 
 @media (max-width: 640px) {
-  .search-row form { flex-basis: 100%; }
+  .splurge {
+    height: 34px;
+    padding: 0 8px;
+    gap: 4px;
+    font-size: 13px;
+  }
+  .splurge .dice { height: 16px; gap: 2px; }
+  .splurge .die { width: 14px; height: 14px; }
+  .splurge-full { display: none; }
+  .splurge-short { display: inline; }
 }
 
 .search, .ex {
@@ -214,6 +227,12 @@ header {
   border: 1.5px solid var(--ink);
   border-radius: 999px;
   padding: 0 6px 0 16px;
+}
+
+.search { overflow: visible; }
+
+@media (max-width: 640px) {
+  .search { gap: 4px; }
 }
 
 .ex {
@@ -239,6 +258,8 @@ header {
   background: transparent;
   font-size: 16px;
 }
+
+.search input { padding-right: 12px; }
 
 .search input::-webkit-search-cancel-button,
 .search input::-webkit-search-decoration {

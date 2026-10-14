@@ -10,7 +10,7 @@ import { fill, formatCount, formatUpdated, messages, PRESET_EXCLUDE } from "../s
 import { PLATFORM_IDS, PLATFORMS, platformById } from "../shared/platforms";
 import { normalizeQuery } from "../shared/query";
 import { similarQuery } from "../shared/similar";
-import { pickSplurgeName, SPLURGE_ROLL_MS } from "../shared/splurge";
+import { applySplurgeName, pickSplurgeName, SPLURGE_ROLL_MS } from "../shared/splurge";
 import type { PlatformId, SearchResponse, SortMode } from "../shared/types";
 import { bindClearButton } from "./clear-field";
 import { defaultPrefs, loadPrefs, savePrefs, type Prefs } from "./prefs";
@@ -245,10 +245,20 @@ let lastSplurge = "";
 let splurgeRolling = false;
 splurgeButton.setAttribute("aria-label", messages.splurgeLabel);
 splurgeButton.style.setProperty("--splurge-roll", `${SPLURGE_ROLL_MS}ms`);
+const splurgeFull = splurgeButton.querySelector(".splurge-full");
+const splurgeShort = splurgeButton.querySelector(".splurge-short");
+if (splurgeFull) splurgeFull.textContent = messages.splurge;
+if (splurgeShort) splurgeShort.textContent = messages.splurgeShort;
+const desktopPointer = (): boolean => window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+// mousedown, not pointerdown: canceling pointerdown can swallow the click on touch screens.
+splurgeButton.addEventListener("mousedown", (event) => {
+  event.preventDefault();
+});
 splurgeButton.addEventListener("click", () => {
   // A disabled button does not run CSS animations on its children, so the
   // dice stay still. Block repeat clicks without setting disabled.
   if (splurgeRolling) return;
+  if (!desktopPointer()) searchInput.blur();
   splurgeRolling = true;
   splurgeButton.setAttribute("aria-disabled", "true");
   splurgeButton.classList.remove("rolling");
@@ -257,9 +267,8 @@ splurgeButton.addEventListener("click", () => {
   window.setTimeout(() => {
     const next = pickSplurgeName(lastSplurge);
     lastSplurge = next;
-    searchInput.value = next;
+    applySplurgeName(searchInput, next, desktopPointer());
     syncSearchClear();
-    searchInput.focus({ preventScroll: true });
     splurgeButton.classList.remove("rolling");
     splurgeButton.removeAttribute("aria-disabled");
     splurgeRolling = false;

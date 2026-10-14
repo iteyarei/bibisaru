@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { pickSplurgeName, SPLURGE_NAMES, SPLURGE_ROLL_MS } from "../shared/splurge";
+import { messages } from "../shared/i18n";
+import { applySplurgeName, pickSplurgeName, SPLURGE_NAMES, SPLURGE_ROLL_MS } from "../shared/splurge";
 
 describe("就想亂花錢", () => {
   it("keeps a broad pool of short product names", () => {
@@ -20,6 +21,34 @@ describe("就想亂花錢", () => {
     expect(SPLURGE_ROLL_MS).toBe(900);
     expect(SPLURGE_ROLL_MS).toBeGreaterThanOrEqual(800);
     expect(SPLURGE_ROLL_MS).toBeLessThanOrEqual(1_000);
+    expect(messages.splurge).toBe("就想亂花錢");
+    expect(messages.splurge.includes(messages.splurgeShort)).toBe(true);
+    expect(messages.splurgeShort.length).toBeGreaterThan(1);
+  });
+
+  it("fills the name without focusing the field on a phone", () => {
+    const field = {
+      value: "",
+      focused: false,
+      focus() {
+        this.focused = true;
+      },
+      blur() {
+        this.focused = false;
+      },
+    };
+    applySplurgeName(field, "貓砂", false);
+    expect(field.value).toBe("貓砂");
+    expect(field.focused).toBe(false);
+
+    field.focused = true;
+    applySplurgeName(field, "奶瓶", false);
+    expect(field.value).toBe("奶瓶");
+    expect(field.focused).toBe(false);
+
+    applySplurgeName(field, "行李箱", true);
+    expect(field.value).toBe("行李箱");
+    expect(field.focused).toBe(true);
   });
 
   it("fills a pool name and does not repeat the previous pick", () => {
