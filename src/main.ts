@@ -242,10 +242,16 @@ function searchSimilar(title: string): void {
 }
 
 let lastSplurge = "";
+let splurgeRolling = false;
 splurgeButton.setAttribute("aria-label", messages.splurgeLabel);
 splurgeButton.addEventListener("click", () => {
-  if (splurgeButton.disabled) return;
-  splurgeButton.disabled = true;
+  // A disabled button does not run CSS animations on its children, so the
+  // dice stay still. Block repeat clicks without setting disabled.
+  if (splurgeRolling) return;
+  splurgeRolling = true;
+  splurgeButton.setAttribute("aria-disabled", "true");
+  splurgeButton.classList.remove("rolling");
+  void splurgeButton.offsetWidth;
   splurgeButton.classList.add("rolling");
   window.setTimeout(() => {
     const next = pickSplurgeName(lastSplurge);
@@ -254,7 +260,8 @@ splurgeButton.addEventListener("click", () => {
     syncSearchClear();
     searchInput.focus({ preventScroll: true });
     splurgeButton.classList.remove("rolling");
-    splurgeButton.disabled = false;
+    splurgeButton.removeAttribute("aria-disabled");
+    splurgeRolling = false;
   }, SPLURGE_ROLL_MS);
 });
 

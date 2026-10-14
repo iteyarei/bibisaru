@@ -129,52 +129,51 @@ header {
   font-weight: 800;
   line-height: 1;
   cursor: pointer;
+  overflow: visible;
+  appearance: none;
 }
 
 .splurge:hover,
 .splurge:focus-visible { background: #c62828; }
 
-.splurge:disabled {
-  background: #e53935;
-  color: #fff;
-  opacity: 1;
-  cursor: wait;
-}
+.splurge.rolling { cursor: wait; }
 
 .dice {
   display: inline-flex;
-  align-items: center;
-  gap: 3px;
+  align-items: flex-end;
+  gap: 4px;
+  height: 22px;
+  overflow: visible;
 }
 
 .die {
-  display: inline-block;
-  font-size: 18px;
-  line-height: 1;
+  display: block;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  overflow: visible;
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
-.die-a { transform: rotate(-14deg); }
-.die-b { transform: rotate(16deg); }
+.die-a { transform: rotate(-12deg); }
+.die-b { transform: rotate(14deg); }
 
 .splurge.rolling .die {
-  animation: splurge-die 0.45s ease-in-out infinite;
+  animation: splurge-die 0.55s linear infinite;
+  will-change: transform;
 }
 
-.splurge.rolling .die-b { animation-delay: 0.14s; }
+.splurge.rolling .die-b { animation-delay: -0.22s; }
 
 @keyframes splurge-die {
   0% { transform: translateY(0) rotate(0deg); }
-  35% { transform: translateY(-8px) rotate(160deg); }
-  70% { transform: translateY(1px) rotate(300deg); }
+  42% { transform: translateY(-20px) rotate(190deg); }
   100% { transform: translateY(0) rotate(360deg); }
 }
 
 @media (max-width: 640px) {
   .search-row form { flex-basis: 100%; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .splurge.rolling .die { animation: none; }
 }
 
 .search, .ex {

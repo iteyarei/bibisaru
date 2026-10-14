@@ -3,8 +3,7 @@ import { pickSplurgeName, SPLURGE_NAMES, SPLURGE_ROLL_MS } from "../shared/splur
 
 describe("就想亂花錢", () => {
   it("keeps a broad pool of short product names", () => {
-    expect(SPLURGE_NAMES.length).toBeGreaterThanOrEqual(80);
-    expect(SPLURGE_NAMES.length).toBeLessThanOrEqual(120);
+    expect(SPLURGE_NAMES.length).toBeGreaterThanOrEqual(300);
     expect(new Set(SPLURGE_NAMES).size).toBe(SPLURGE_NAMES.length);
     for (const name of SPLURGE_NAMES) expect(name.length).toBeLessThanOrEqual(40);
     expect(SPLURGE_NAMES).toContain("藍牙耳機");
@@ -13,6 +12,11 @@ describe("就想亂花錢", () => {
     expect(SPLURGE_NAMES).toContain("拖鞋");
     expect(SPLURGE_NAMES).toContain("洋芋片");
     expect(SPLURGE_NAMES).toContain("Switch 手把");
+    expect(SPLURGE_NAMES).toContain("貓砂");
+    expect(SPLURGE_NAMES).toContain("嬰兒尿布");
+    expect(SPLURGE_NAMES).toContain("行車紀錄器");
+    expect(SPLURGE_NAMES).toContain("行李箱");
+    expect(SPLURGE_NAMES).toContain("維他命");
     expect(SPLURGE_ROLL_MS).toBe(2_000);
   });
 
