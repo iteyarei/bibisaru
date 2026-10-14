@@ -244,6 +244,7 @@ function searchSimilar(title: string): void {
 let lastSplurge = "";
 let splurgeRolling = false;
 splurgeButton.setAttribute("aria-label", messages.splurgeLabel);
+splurgeButton.style.setProperty("--splurge-roll", `${SPLURGE_ROLL_MS}ms`);
 splurgeButton.addEventListener("click", () => {
   // A disabled button does not run CSS animations on its children, so the
   // dice stay still. Block repeat clicks without setting disabled.

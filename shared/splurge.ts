@@ -1,5 +1,9 @@
-/** How long the dice roll before a keyword is filled in. The search is not submitted. */
-export const SPLURGE_ROLL_MS = 2_000;
+/**
+ * How long the dice jump before a keyword is filled in.
+ * Two hops, then the name appears. The search is not submitted.
+ * CSS reads this as `--splurge-roll` so the fill-in matches the animation.
+ */
+export const SPLURGE_ROLL_MS = 900;
 
 /**
  * Everyday Traditional Chinese product names people actually search on Taiwan shops.
