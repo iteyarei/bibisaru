@@ -17,7 +17,9 @@ describe("就想亂花錢", () => {
     expect(SPLURGE_NAMES).toContain("行車紀錄器");
     expect(SPLURGE_NAMES).toContain("行李箱");
     expect(SPLURGE_NAMES).toContain("維他命");
-    expect(SPLURGE_ROLL_MS).toBe(2_000);
+    expect(SPLURGE_ROLL_MS).toBe(900);
+    expect(SPLURGE_ROLL_MS).toBeGreaterThanOrEqual(800);
+    expect(SPLURGE_ROLL_MS).toBeLessThanOrEqual(1_000);
   });
 
   it("fills a pool name and does not repeat the previous pick", () => {
