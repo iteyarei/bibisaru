@@ -1,9 +1,8 @@
+import { searchCoupangPartners } from "../../shared/coupang-api";
 import {
-  coupangHasList,
   etmallProducts,
   kingstoneProducts,
   momoProducts,
-  normalizeCoupang,
   normalizePchome,
   normalizeShopee,
   pxgoProducts,
@@ -123,15 +122,9 @@ const fetchMomo: PlatformFetcher = async (query) => {
 
 const fetchCoupang: PlatformFetcher = async (query) => {
   try {
-    const { ok: fine, text } = await request(rawSearchUrl("coupang", query), {
-      ...DOCUMENT_HEADERS,
-      referer: "https://www.tw.coupang.com/",
-      "sec-fetch-site": "same-origin",
-    });
-    if (!fine || text.includes('id="error403"') || !coupangHasList(text)) {
-      return unavailableResult("coupang", query);
-    }
-    return ok("coupang", query, normalizeCoupang(text));
+    const products = await searchCoupangPartners(query);
+    if (!products) return unavailableResult("coupang", query);
+    return ok("coupang", query, products);
   } catch {
     return unavailableResult("coupang", query);
   }
