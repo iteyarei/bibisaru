@@ -45,11 +45,53 @@ npm run test:live
 
 也可以之後用 Wrangler：`npx wrangler pages deploy dist`。`wrangler.toml` 已經寫好輸出目錄、compatibility date，以及 Pages Functions 的 Smart Placement（`[placement] mode = "smart"`）。Smart Placement 不能指定或避開某個機房。
 
+## 美國抓取 Worker（bibisaru-fetch）
+
+全聯、酷澎、蝦皮從 Cloudflare 的 HKG 會間歇回 403，從美國（IAD）可以。Pages Function 仍在訪客附近執行。另外一個 Worker `bibisaru-fetch` 用 Placement Hint 釘在最靠近 `aws:us-east-1` 的機房，由它代打這三家。
+
+文件：
+
+- Placement（含 `[placement] region = "aws:us-east-1"`）：https://developers.cloudflare.com/workers/configuration/placement/
+- 同一頁寫明 Smart Placement「available on all Workers plans」。Region hint 是該頁的明確放置方式，changelog 稱為 Smart Placement 的延伸，定價頁沒有把它列成付費功能：https://developers.cloudflare.com/changelog/post/2026-01-22-explicit-placement-hints/
+- Workers Builds：https://developers.cloudflare.com/workers/ci-cd/builds/
+
+沒有設定 `FETCH_PROXY_URL` 和 `PROXY_TOKEN` 時，Pages 仍直接抓。兩個都有值時，全聯、酷澎、蝦皮改打 Worker；連線失敗或非 JSON 就退回直接抓。Worker 回 401 時不退回，原因是 `exception: proxy unauthorized`，金鑰不會出現在 log 或原因裡。酷澎的 Open API 金鑰要設在 Worker 上，不會從 Pages 傳過去。
+
+### 你要做的部署
+
+用儀表板的 Workers Builds（Git）：
+
+1. 打開 [Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages)，Create application → Import a repository。
+2. 選 GitHub 帳號，匯入 `iteyarei/bibisaru`，生產分支 `main`。
+3. 專案名稱填 `bibisaru-fetch`。這個名稱必須和 `workers/fetch-proxy/wrangler.toml` 的 `name` 一樣。
+4. Root directory 填 `workers/fetch-proxy`。Build command 留空。Deploy command 用 `npx wrangler deploy`。
+5. Build watch paths 加上 `workers/fetch-proxy/*`、`shared/*`、`functions/lib/*`，這樣共用程式改了也會重新部署。
+6. Save and Deploy。部署完成後，Overview 會顯示 `https://bibisaru-fetch.<你的帳號>.workers.dev`。
+7. 打開這個 Worker → Settings → Variables and Secrets，新增三個 **Secret**（不要用純文字變數）：
+   - `PROXY_TOKEN`：自己產生的一長串隨機字，至少 32 個字元。
+   - `COUPANG_ACCESS_KEY`：和 Pages 上的酷澎 Access Key 相同。
+   - `COUPANG_SECRET_KEY`：和 Pages 上的酷澎 Secret Key 相同。
+8. 打開 Pages 專案 `bibisaru` → Settings → Variables and Secrets，新增：
+   - `FETCH_PROXY_URL`：上一步的 `https://bibisaru-fetch.<你的帳號>.workers.dev`（不要加路徑）。
+   - `PROXY_TOKEN`：和 Worker 上同一個值，類型選 Secret。
+9. 重新部署 Pages（或再推一次 `main`），讓這兩個變數進到 Function。
+
+或在本機，從儲存庫根目錄：
+
+```bash
+npx wrangler deploy --config workers/fetch-proxy/wrangler.toml
+npx wrangler secret put PROXY_TOKEN --config workers/fetch-proxy/wrangler.toml
+npx wrangler secret put COUPANG_ACCESS_KEY --config workers/fetch-proxy/wrangler.toml
+npx wrangler secret put COUPANG_SECRET_KEY --config workers/fetch-proxy/wrangler.toml
+```
+
+然後把印出來的 workers.dev 網址和同一個 `PROXY_TOKEN` 設到 Pages，同上。不要把密鑰寫進 git。
+
 ## 搜尋怎麼運作
 
 `GET /api/search?q=耳機&platforms=momo,pchome,yahoo,coupang,shopee,pxgo,etmall,kingstone,sanmin`
 
-每家最多回 24 筆，欄位是 `{ platform, title, price, image, url }`。某一家失敗不會讓其他家一起失敗。失敗的那一家在畫面上顯示「暫時無法取得」，底下用淺灰色小字寫原因和 Cloudflare 機房（例如「原因：http_403 · HKG · fetchColo IAD」），並給一顆按鈕打開該平台自己的搜尋頁。`meta.colo` 是訪客進來的機房。`meta.fetchColo` 是這次函式實際打出去的機房，來自 `https://www.cloudflare.com/cdn-cgi/trace` 的 `colo`，不含 IP。全聯從 HKG 會被 403，從 IAD 可以；Smart Placement 不會因此改走 IAD。
+每家最多回 24 筆，欄位是 `{ platform, title, price, image, url }`。某一家失敗不會讓其他家一起失敗。失敗的那一家在畫面上顯示「暫時無法取得」，底下用淺灰色小字寫原因和 Cloudflare 機房（例如「原因：http_403 · HKG · fetchColo IAD」），並給一顆按鈕打開該平台自己的搜尋頁。`meta.colo` 是訪客進來的機房。`meta.fetchColo` 是這次函式實際打出去的機房，來自 `https://www.cloudflare.com/cdn-cgi/trace` 的 `colo`，不含 IP。全聯從 HKG 會被 403，從 IAD 可以；Smart Placement 不會因此改走 IAD。有設定美國 Worker 時，全聯、酷澎、蝦皮改由那個 Worker 抓，卡片上的 `fetchColo` 是 Worker 回報的機房。
 
 同一組關鍵字與平台組合，全部抓到時會在邊緣快取約 3 分鐘，瀏覽器再快取 30 秒。快取鍵帶這次部署的版本，新版本不會沿用舊結果。若 momo、PChome、Yahoo、全聯、東森、金石堂、三民有一家失敗，這次回應是 `no-store`，不會被快取。酷澎、蝦皮常常只有前往搜尋，不算這次失敗。每個抓取的店（酷澎除外）失敗或逾時會再要一次：全聯隔約 0.8 秒、單次逾時 10 秒，其他店隔約 0.3 秒、單次逾時 8 秒。各店平行抓，最慢的一條仍低於 Pages 約 30 秒。每個 IP 大約每分鐘 20 次未命中快取的搜尋。
 

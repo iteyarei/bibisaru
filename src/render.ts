@@ -48,7 +48,7 @@ export function renderNotices(
       ),
     );
     if (notice.status === "unavailable") {
-      const detail = unavailableNote(notice.reason, colo, fetchColo);
+      const detail = unavailableNote(notice.reason, colo, notice.fetchColo || fetchColo);
       if (detail) copy.append(el("p", "why", detail));
     }
     const link = outbound(notice.searchUrl, "", `${messages.goSearch} ↗`);
