@@ -9,11 +9,13 @@ import {
   sanminProducts,
   yahooProducts,
 } from "../../shared/normalize";
+import { pxgoAttempt } from "../../shared/pxgo";
 import { platformSearchUrl, rawSearchUrl } from "../../shared/platforms";
 import {
   failureReason,
   PLATFORM_TIMEOUT_MS,
   retriesPlatform,
+  retryDelayFor,
   retryPlatform,
 } from "../../shared/reliability";
 import { unavailableResult } from "../../shared/search";
@@ -64,7 +66,7 @@ async function readLimited(response: Response): Promise<string> {
 async function request(
   url: string,
   headers: Record<string, string>,
-  extra?: { method?: string; body?: string; fresh?: boolean },
+  extra?: { method?: string; body?: string; fresh?: boolean; timeoutMs?: number },
 ): Promise<{ ok: boolean; status: number; text: string }> {
   const method = extra?.method ?? "GET";
   const fresh = extra?.fresh ?? false;
@@ -73,7 +75,7 @@ async function request(
     body: extra?.body,
     headers: { "user-agent": USER_AGENT, "accept-language": "zh-TW,zh;q=0.9,en;q=0.8", ...headers },
     redirect: "follow",
-    signal: AbortSignal.timeout(PLATFORM_TIMEOUT_MS),
+    signal: AbortSignal.timeout(extra?.timeoutMs ?? PLATFORM_TIMEOUT_MS),
   };
   if (fresh) init.cache = "no-store";
   const response = await fetch(url, !fresh && method === "GET" ? withEdgeCache(init) : init);
@@ -93,6 +95,7 @@ function scrape(
   id: PlatformId,
   query: string,
   run: (fresh: boolean) => Promise<PlatformResult>,
+  pauseMs: number = retryDelayFor(id),
 ): Promise<PlatformResult> {
   const once = async (fresh: boolean) => {
     try {
@@ -102,7 +105,7 @@ function scrape(
     }
   };
   if (!retriesPlatform(id)) return once(false);
-  return retryPlatform(({ fresh }) => once(fresh));
+  return retryPlatform(({ fresh }) => once(fresh), undefined, pauseMs);
 }
 
 function ok(id: PlatformId, query: string, products: Product[]): PlatformResult {
@@ -163,34 +166,24 @@ const fetchCoupang: PlatformFetcher = async (query) => {
 };
 
 const fetchPxgo: PlatformFetcher = (query) =>
-  scrape("pxgo", query, async (fresh) => {
-    const body = JSON.stringify({
-      search_setting_type: 1,
-      keyword: query,
-      sort_type: 0,
-      page_index: 1,
-      page_size: 24,
-      filters: [],
-      visitor_id: "bibisaru",
-      user_info_id: "",
-      is_using_prod_es: false,
-      skip_brand_detection: false,
-    });
-    const response = await request(
-      "https://api-pxbox.es.pxmart.com.tw/app/3.0/spu/single_search",
-      {
-        accept: "application/json",
-        "content-type": "application/json",
-        origin: "https://pxbox.es.pxmart.com.tw",
-        referer: "https://pxbox.es.pxmart.com.tw/",
-      },
-      { method: "POST", body, fresh },
-    );
-    if (!response.ok) return httpFailure("pxgo", query, response.status);
-    const products = pxgoProducts(JSON.parse(response.text) as unknown);
-    if (!products) return parseFailure("pxgo", query);
-    return ok("pxgo", query, products);
-  });
+  scrape(
+    "pxgo",
+    query,
+    async (fresh) => {
+      const attempt = pxgoAttempt(query, fresh);
+      const response = await request(attempt.url, attempt.headers, {
+        method: "POST",
+        body: attempt.body,
+        fresh: attempt.fresh,
+        timeoutMs: attempt.timeoutMs,
+      });
+      if (!response.ok) return httpFailure("pxgo", query, response.status);
+      const products = pxgoProducts(JSON.parse(response.text) as unknown);
+      if (!products) return parseFailure("pxgo", query);
+      return ok("pxgo", query, products);
+    },
+    retryDelayFor("pxgo"),
+  );
 
 const fetchEtmall: PlatformFetcher = (query) =>
   scrape("etmall", query, async (fresh) => {

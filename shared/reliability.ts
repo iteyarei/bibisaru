@@ -1,18 +1,21 @@
+import { parsePlatformParam } from "./platforms";
+import { normalizeQuery } from "./query";
 import type { PlatformId, PlatformStatus } from "./types";
 
 /**
  * One attempt. A scraped shop may run a second attempt after a short pause.
  * Shops run at the same time, so the wait is the slower shop, not the sum.
- * Two 8s attempts plus the pause stay under the Pages request limit of about 30s.
+ * 全聯 uses a longer timeout. Two attempts plus its pause stay under about 30s.
  */
 export const PLATFORM_TIMEOUT_MS = 8_000;
 export const PLATFORM_RETRY_DELAY_MS = 300;
+export const PXGO_TIMEOUT_MS = 10_000;
+export const PXGO_RETRY_DELAY_MS = 800;
 export const PAGES_REQUEST_LIMIT_MS = 30_000;
 
-/** Long edge cache. Shortened when a shop we expect to scrape did not answer. */
+/** Long edge cache. A failed scraped shop is not cached at all. */
 export const SEARCH_CACHE_SECONDS = 180;
 export const SEARCH_CACHE_BROWSER_SECONDS = 30;
-export const SEARCH_DEGRADED_CACHE_SECONDS = 20;
 
 /**
  * These shops are often only a search link. Their failure must not throw away
@@ -32,8 +35,19 @@ export const RETRIED_PLATFORMS: readonly PlatformId[] = [
   "sanmin",
 ];
 
+export function timeoutFor(id: PlatformId): number {
+  return id === "pxgo" ? PXGO_TIMEOUT_MS : PLATFORM_TIMEOUT_MS;
+}
+
+export function retryDelayFor(id: PlatformId): number {
+  return id === "pxgo" ? PXGO_RETRY_DELAY_MS : PLATFORM_RETRY_DELAY_MS;
+}
+
 export function worstScrapedWaitMs(): number {
-  return PLATFORM_TIMEOUT_MS * 2 + PLATFORM_RETRY_DELAY_MS;
+  const budgets = (RETRIED_PLATFORMS as readonly PlatformId[]).map(
+    (id) => timeoutFor(id) * 2 + retryDelayFor(id),
+  );
+  return Math.max(...budgets);
 }
 
 export function retriesPlatform(id: PlatformId): boolean {
@@ -67,26 +81,85 @@ export function failureReason(error: unknown): string {
 export async function retryPlatform<T extends { status: "ok" | "unavailable" }>(
   run: (attempt: { fresh: boolean }) => Promise<T>,
   wait: (ms: number) => Promise<void> = delay,
+  pauseMs: number = PLATFORM_RETRY_DELAY_MS,
 ): Promise<T> {
   const first = await run({ fresh: false });
   if (first.status === "ok") return first;
-  await wait(PLATFORM_RETRY_DELAY_MS);
+  await wait(pauseMs);
   return run({ fresh: true });
 }
 
-export function searchCacheSeconds(
+export function scrapedShopFailed(
   platforms: readonly { id: PlatformId; status: PlatformStatus }[],
-): number {
-  const scrapedFailed = platforms.some(
+): boolean {
+  return platforms.some(
     (platform) => platform.status === "unavailable" && !EXPECTED_UNAVAILABLE.includes(platform.id),
   );
-  return scrapedFailed ? SEARCH_DEGRADED_CACHE_SECONDS : SEARCH_CACHE_SECONDS;
 }
 
+/** no-store when a scraped shop failed. Link-only shops do not force that. */
 export function searchCacheControl(
   platforms: readonly { id: PlatformId; status: PlatformStatus }[],
 ): string {
-  const seconds = searchCacheSeconds(platforms);
-  if (seconds < SEARCH_CACHE_SECONDS) return `public, max-age=${seconds}, s-maxage=${seconds}`;
+  if (scrapedShopFailed(platforms)) return "no-store";
   return `public, max-age=${SEARCH_CACHE_BROWSER_SECONDS}, s-maxage=${SEARCH_CACHE_SECONDS}`;
+}
+
+/** Pages sets CF_PAGES_COMMIT_SHA. Anything else shares the dev cache. */
+export function searchCacheVersion(commitSha: string | undefined | null): string {
+  const sha = typeof commitSha === "string" ? commitSha.trim() : "";
+  if (/^[0-9a-f]{7,64}$/i.test(sha)) return sha.toLowerCase();
+  return "dev";
+}
+
+/**
+ * Edge cache key. `version` is the deploy id, so a new build never reads the previous one.
+ * The visitor's own `v` query is ignored here; the server version is the source of truth.
+ */
+export function searchCacheUrl(
+  requestUrl: string,
+  query: string,
+  platforms: readonly string[],
+  version: string,
+): string {
+  const url = new URL(requestUrl);
+  url.search = "";
+  url.searchParams.set("q", query);
+  url.searchParams.set("platforms", platforms.join(","));
+  url.searchParams.set("v", version || "dev");
+  return url.toString();
+}
+
+/** Normalize the query the same way the handler does, then attach the deploy version. */
+export function searchCacheKeyFromRequest(requestUrl: string, version: string): string | null {
+  const url = new URL(requestUrl);
+  const query = normalizeQuery(url.searchParams.get("q") ?? "");
+  if (!query) return null;
+  const ids = parsePlatformParam(url.searchParams.get("platforms"));
+  if (!ids.length) return null;
+  return searchCacheUrl(requestUrl, query, ids, searchCacheVersion(version));
+}
+
+export function normalizeColo(value: unknown): string {
+  if (typeof value !== "string") return "";
+  const colo = value.trim();
+  if (!/^[A-Za-z]{3}$/.test(colo)) return "";
+  return colo.toUpperCase();
+}
+
+export function unavailableLogLine(id: string, reason: string | undefined, colo: string): string {
+  const why = reason?.replace(/[\r\n]+/g, " ").trim() || "unknown";
+  const where = colo.trim() || "unknown";
+  return `reason=${why} colo=${where} platform=${id}`;
+}
+
+export function logUnavailableShops(
+  platforms: readonly { id: string; status: string; reason?: string }[],
+  colo: string,
+  write: (line: string) => void = console.log,
+): void {
+  for (const platform of platforms) {
+    if (platform.status !== "unavailable") continue;
+    write(unavailableLogLine(platform.id, platform.reason, colo));
+  }
 }

@@ -1,4 +1,4 @@
-import { fill, formatPrice, messages } from "../shared/i18n";
+import { fill, formatPrice, messages, unavailableNote } from "../shared/i18n";
 import { platformById } from "../shared/platforms";
 import type { PlatformReport, Product } from "../shared/types";
 
@@ -27,20 +27,27 @@ function outbound(href: string, className: string, text: string): HTMLAnchorElem
   return link;
 }
 
-export function renderNotices(root: HTMLElement, notices: readonly PlatformReport[]): void {
+export function renderNotices(root: HTMLElement, notices: readonly PlatformReport[], colo = ""): void {
   root.replaceChildren();
   for (const notice of notices) {
     const platform = platformById(notice.id);
     const card = el("div", "notice");
     card.style.setProperty("--c", platform.color);
     const dot = el("i", "dot");
-    const text = el(
-      "p",
-      undefined,
-      fill(notice.status === "empty" ? messages.platformEmpty : messages.unavailable, { name: platform.name }),
+    const copy = el("div", "copy");
+    copy.append(
+      el(
+        "p",
+        undefined,
+        fill(notice.status === "empty" ? messages.platformEmpty : messages.unavailable, { name: platform.name }),
+      ),
     );
+    if (notice.status === "unavailable") {
+      const detail = unavailableNote(notice.reason, colo);
+      if (detail) copy.append(el("p", "why", detail));
+    }
     const link = outbound(notice.searchUrl, "", `${messages.goSearch} ↗`);
-    card.append(dot, text, link);
+    card.append(dot, copy, link);
     root.append(card);
   }
 }

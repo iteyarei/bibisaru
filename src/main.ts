@@ -14,6 +14,7 @@ import type { PlatformId, SearchResponse, SortMode } from "../shared/types";
 import { bindClearButton } from "./clear-field";
 import { defaultPrefs, loadPrefs, savePrefs, type Prefs } from "./prefs";
 import { renderNotices, renderStage } from "./render";
+import { BUILD_VERSION } from "./version";
 
 const prefs: Prefs = loadPrefs();
 let response: SearchResponse | null = null;
@@ -111,7 +112,7 @@ function render(): void {
             prefs.platforms[platform.id] && (platform.status === "unavailable" || platform.status === "empty"),
         )
       : [];
-  renderNotices(noticeRoot, notices);
+  renderNotices(noticeRoot, notices, response?.meta.colo ?? "");
   renderStage(stage, {
     loading,
     error,
@@ -173,7 +174,7 @@ async function runSearch(raw: string, pushHistory: boolean): Promise<void> {
   document.title = fill(messages.searchTitle, { q: next });
 
   try {
-    const endpoint = `/api/search?q=${encodeURIComponent(next)}&platforms=${ids.join(",")}`;
+    const endpoint = `/api/search?q=${encodeURIComponent(next)}&platforms=${ids.join(",")}&v=${encodeURIComponent(BUILD_VERSION)}`;
     const result = await fetch(endpoint);
     const body = (await result.json()) as SearchResponse & { error?: string };
     if (current !== requestId) return;

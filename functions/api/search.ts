@@ -2,7 +2,13 @@ import { messages } from "../../shared/i18n";
 import { parsePlatformParam } from "../../shared/platforms";
 import { normalizeQuery } from "../../shared/query";
 import { createRateLimiter } from "../../shared/rate-limit";
-import { searchCacheControl } from "../../shared/reliability";
+import {
+  logUnavailableShops,
+  normalizeColo,
+  searchCacheControl,
+  searchCacheUrl,
+  searchCacheVersion,
+} from "../../shared/reliability";
 import { searchPlatforms } from "../../shared/search";
 import { fetchers } from "../lib/providers";
 
@@ -28,7 +34,11 @@ async function matchCache(key: Request): Promise<Response | undefined> {
   }
 }
 
-export const onRequestGet: PagesFunction = async (context) => {
+interface SearchEnv {
+  CF_PAGES_COMMIT_SHA?: string;
+}
+
+export const onRequestGet: PagesFunction<SearchEnv> = async (context) => {
   const url = new URL(context.request.url);
   const query = normalizeQuery(url.searchParams.get("q") ?? "");
   if (!query) return json({ error: messages.missingQuery }, 400, "no-store");
@@ -36,11 +46,8 @@ export const onRequestGet: PagesFunction = async (context) => {
   const ids = parsePlatformParam(url.searchParams.get("platforms"));
   if (!ids.length) return json({ error: messages.enableOne }, 400, "no-store");
 
-  const cacheUrl = new URL(context.request.url);
-  cacheUrl.search = "";
-  cacheUrl.searchParams.set("q", query);
-  cacheUrl.searchParams.set("platforms", ids.join(","));
-  const cacheKey = new Request(cacheUrl.toString(), { method: "GET" });
+  const version = searchCacheVersion(context.env.CF_PAGES_COMMIT_SHA);
+  const cacheKey = new Request(searchCacheUrl(context.request.url, query, ids, version), { method: "GET" });
   const cached = await matchCache(cacheKey);
   if (cached) return cached;
 
@@ -49,16 +56,21 @@ export const onRequestGet: PagesFunction = async (context) => {
     return json({ error: messages.rateLimited }, 429, "no-store", { "retry-after": "60" });
   }
 
-  const body = await searchPlatforms(query, ids, fetchers);
-  const response = json(body, 200, searchCacheControl(body.platforms));
-  context.waitUntil(
-    (async () => {
-      try {
-        await caches.default.put(cacheKey, response.clone());
-      } catch {
-        // Edge cache is best-effort. A miss still returns the fresh body.
-      }
-    })(),
-  );
+  const colo = normalizeColo(context.request.cf?.colo);
+  const body = await searchPlatforms(query, ids, fetchers, () => new Date(), colo);
+  logUnavailableShops(body.platforms, colo);
+  const cacheControl = searchCacheControl(body.platforms);
+  const response = json(body, 200, cacheControl);
+  if (cacheControl !== "no-store") {
+    context.waitUntil(
+      (async () => {
+        try {
+          await caches.default.put(cacheKey, response.clone());
+        } catch {
+          // Edge cache is best-effort. A miss still returns the fresh body.
+        }
+      })(),
+    );
+  }
   return response;
 };

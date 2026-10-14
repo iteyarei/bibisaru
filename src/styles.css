@@ -354,7 +354,17 @@ header {
   flex: none;
 }
 
-.notice p { margin: 0; flex: 1; min-width: 0; }
+.notice .copy { flex: 1; min-width: 0; }
+
+.notice p { margin: 0; }
+
+.notice .why {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 500;
+  color: #9ca3af;
+}
 
 .notice a {
   flex: none;
