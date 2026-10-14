@@ -43,5 +43,6 @@ describe("searchPlatforms", () => {
       ["shopee", "unavailable", 0],
     ]);
     expect(response.fetchedAt).toBe("2026-10-12T03:00:00.000Z");
+    expect(response.platforms.find((platform) => platform.id === "pchome")?.reason).toBe("timeout");
   });
 });

@@ -1,8 +1,11 @@
 import { platformSearchUrl } from "./platforms";
+import { failureReason } from "./reliability";
 import type { PlatformFetcher, PlatformId, PlatformReport, PlatformResult, SearchResponse } from "./types";
 
-export function unavailableResult(id: PlatformId, query: string): PlatformResult {
-  return { id, status: "unavailable", products: [], searchUrl: platformSearchUrl(id, query) };
+export function unavailableResult(id: PlatformId, query: string, reason?: string): PlatformResult {
+  const result: PlatformResult = { id, status: "unavailable", products: [], searchUrl: platformSearchUrl(id, query) };
+  if (reason) result.reason = reason;
+  return result;
 }
 
 export async function searchPlatforms(
@@ -14,11 +17,11 @@ export async function searchPlatforms(
   const settled = await Promise.all(
     ids.map(async (id) => {
       const fetcher = fetchers[id];
-      if (!fetcher) return unavailableResult(id, query);
+      if (!fetcher) return unavailableResult(id, query, "exception: no fetcher");
       try {
         return await fetcher(query);
-      } catch {
-        return unavailableResult(id, query);
+      } catch (error) {
+        return unavailableResult(id, query, failureReason(error));
       }
     }),
   );
