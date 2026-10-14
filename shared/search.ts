@@ -35,6 +35,7 @@ export async function searchPlatforms(
       searchUrl: result.searchUrl,
     };
     if (result.reason) report.reason = result.reason;
+    if (result.fetchColo) report.fetchColo = result.fetchColo;
     return report;
   });
 

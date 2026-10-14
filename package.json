@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173",
-    "build": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.functions.json --noEmit && vite build",
+    "build": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.functions.json --noEmit && tsc -p workers/fetch-proxy/tsconfig.json --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1 --port 4173",
     "test": "vitest run",
     "test:live": "vitest run --config vitest.live.config.ts --reporter=verbose",

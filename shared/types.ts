@@ -31,6 +31,8 @@ export interface PlatformReport {
   searchUrl: string;
   /** Why this shop is unavailable. Never contains secrets. */
   reason?: string;
+  /** Colo that fetched this shop, when it differs from the Pages trace. */
+  fetchColo?: string;
 }
 
 export interface SearchMeta {
@@ -55,6 +57,8 @@ export interface PlatformResult {
   searchUrl: string;
   /** Why this shop is unavailable. Never contains secrets. */
   reason?: string;
+  /** Colo of the Worker that fetched this shop. Empty when fetched directly. */
+  fetchColo?: string;
 }
 
 export type PlatformFetcher = (query: string) => Promise<PlatformResult>;

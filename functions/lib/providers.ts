@@ -9,6 +9,7 @@ import {
   sanminProducts,
   yahooProducts,
 } from "../../shared/normalize";
+import { fetchProxiedShop, readProxyConfig } from "../../shared/proxy";
 import { pxgoAttempt } from "../../shared/pxgo";
 import { platformSearchUrl, rawSearchUrl } from "../../shared/platforms";
 import {
@@ -151,9 +152,12 @@ const fetchMomo: PlatformFetcher = (query) =>
     return ok("momo", query, products);
   });
 
-const fetchCoupang: PlatformFetcher = async (query) => {
+export async function fetchCoupangDirect(
+  query: string,
+  keys?: { accessKey?: string; secretKey?: string },
+): Promise<PlatformResult> {
   try {
-    const outcome = await searchCoupangPartners(query);
+    const outcome = await searchCoupangPartners(query, keys);
     if (!outcome.products) {
       return { ...unavailableResult("coupang", query), reason: outcome.reason ?? "exception: unknown" };
     }
@@ -163,9 +167,11 @@ const fetchCoupang: PlatformFetcher = async (query) => {
     const clipped = message.length > 120 ? message.slice(0, 120) : message;
     return { ...unavailableResult("coupang", query), reason: `exception: ${clipped || "unknown"}` };
   }
-};
+}
 
-const fetchPxgo: PlatformFetcher = (query) =>
+const fetchCoupang: PlatformFetcher = (query) => fetchProxiedShop("coupang", query, fetchCoupangDirect, readProxyConfig());
+
+export const fetchPxgoDirect: PlatformFetcher = (query) =>
   scrape(
     "pxgo",
     query,
@@ -184,6 +190,8 @@ const fetchPxgo: PlatformFetcher = (query) =>
     },
     retryDelayFor("pxgo"),
   );
+
+const fetchPxgo: PlatformFetcher = (query) => fetchProxiedShop("pxgo", query, fetchPxgoDirect, readProxyConfig());
 
 const fetchEtmall: PlatformFetcher = (query) =>
   scrape("etmall", query, async (fresh) => {
@@ -227,7 +235,7 @@ const fetchSanmin: PlatformFetcher = (query) =>
     return ok("sanmin", query, products);
   });
 
-const fetchShopee: PlatformFetcher = (query) =>
+export const fetchShopeeDirect: PlatformFetcher = (query) =>
   scrape("shopee", query, async (fresh) => {
     const keyword = encodeURIComponent(query);
     const response = await request(
@@ -245,6 +253,8 @@ const fetchShopee: PlatformFetcher = (query) =>
     if (data.error) return unavailableResult("shopee", query, "exception: api error");
     return ok("shopee", query, normalizeShopee(data));
   });
+
+const fetchShopee: PlatformFetcher = (query) => fetchProxiedShop("shopee", query, fetchShopeeDirect, readProxyConfig());
 
 export const fetchers: Record<PlatformId, PlatformFetcher> = {
   momo: fetchMomo,

@@ -161,13 +161,13 @@ export function unavailableLogLine(
 }
 
 export function logUnavailableShops(
-  platforms: readonly { id: string; status: string; reason?: string }[],
+  platforms: readonly { id: string; status: string; reason?: string; fetchColo?: string }[],
   colo: string,
   write: (line: string) => void = console.log,
   fetchColo = "",
 ): void {
   for (const platform of platforms) {
     if (platform.status !== "unavailable") continue;
-    write(unavailableLogLine(platform.id, platform.reason, colo, fetchColo));
+    write(unavailableLogLine(platform.id, platform.reason, colo, platform.fetchColo || fetchColo));
   }
 }

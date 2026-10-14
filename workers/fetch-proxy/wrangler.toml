@@ -1,0 +1,17 @@
+# US egress for shops that answer 403 from Cloudflare HKG.
+# Placement hint: https://developers.cloudflare.com/workers/configuration/placement/
+# Region hints are documented on that page (all Workers plans; Smart Placement
+# is explicitly "available on all Workers plans") and in
+# https://developers.cloudflare.com/changelog/post/2026-01-22-explicit-placement-hints/
+name = "bibisaru-fetch"
+main = "src/index.ts"
+compatibility_date = "2026-10-12"
+compatibility_flags = ["nodejs_compat"]
+
+[placement]
+region = "aws:us-east-1"
+
+# Secrets are not stored here. Set them on the Worker:
+#   PROXY_TOKEN
+#   COUPANG_ACCESS_KEY
+#   COUPANG_SECRET_KEY
