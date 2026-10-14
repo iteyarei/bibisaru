@@ -68,7 +68,7 @@ npm run test:live
 | momo | 有抓到商品（24 筆） | 讀搜尋頁 HTML 裡的商品清單 |
 | PChome | 有抓到商品（20 筆）。連續打太多次時對方會回 429，畫面改顯示「暫時無法取得」 | 公開搜尋 JSON：`ecshweb.pchome.com.tw/search/v3.3/all/results`，需要 Referer |
 | Yahoo 奇摩購物中心 | 有抓到商品（24 筆） | 讀搜尋頁內嵌的 `isoredux-data` |
-| 酷澎 | 不穩定 | 第一次 `/np/search` 回了完整商品頁，轉接器可解析（例如 EarPods，$539）。同一台機器稍後再打就變成 403。失敗時不捏造商品，改成前往酷澎搜尋 |
+| 酷澎 | Partners Open API | 有 `COUPANG_ACCESS_KEY` 與 `COUPANG_SECRET_KEY` 時打 `api-gateway.tw.coupang.com` 商品搜尋，最多 10 筆，售價用 `productPrice`。金鑰缺或 API 失敗時不捏造商品，顯示「暫時無法取得」，並給分潤搜尋連結 |
 | 蝦皮 | 拿不到 | 搜尋 API 回 403（錯誤碼 90309999），搜尋頁是空殼。只提供前往蝦皮搜尋 |
 | 全聯 | 有抓到商品（24 筆） | 全聯全電商公開搜尋 `api-pxbox.es.pxmart.com.tw` 的 `single_search` |
 | 東森 | 有抓到商品（48 筆，頁面只用前 24） | `etmall.com.tw/Search/Get` JSON，用成交價 `finalPrice` |
@@ -86,12 +86,12 @@ npm run test:live
 - 康是美、屈臣氏：頁面或 API 被擋，沒有可解析的搜尋結果。
 - 全聯官網 `shop.pxmart.com.tw` 回 403；實際接的是全聯全電商（PX Go / pxbox）。
 
-酷澎、蝦皮、誠品在 Cloudflare 的出口 IP 上可能和這台機器不一樣。
+蝦皮、誠品在 Cloudflare 的出口 IP 上可能和這台機器不一樣。
 
 ## 風險
 
 - 這些平台的使用條款多半不允許自動抓搜尋結果。這一版量很小、有快取。蝦皮與酷澎的外出連結走官方分潤轉址，其他店沒有聯盟參數。仍可能違反對方條款，也可能隨時被擋。
-- momo、Yahoo、酷澎是解析網頁，版面一改就會變成「暫時無法取得」。PChome 走 JSON，相對穩，但也沒有正式對外匯的保證。
+- momo、Yahoo 是解析網頁，版面一改就會變成「暫時無法取得」。PChome 與酷澎走 JSON。酷澎用 Partners Open API，金鑰放在 Pages secrets，不會寫進紀錄。PChome 沒有正式對外匯的保證。
 - 比的是每一家搜尋結果的前一頁，不是該站全部商品。最低價指的是這一批裡面最便宜的。
 - 有些平台會把推薦商品混進搜尋結果，標價仍是該頁上的價格。
 - 商品圖是直接連到各平台的圖床，對方若擋外連，圖會變成灰塊，商品與價格還在。
@@ -107,4 +107,4 @@ npm run test:live
 
 介面文字集中在 `shared/i18n.ts`，目前只有繁體中文。
 
-聯盟參數只准加在 `shared/affiliate.ts` 的 `applyAffiliate`。`AFFILIATE_ENABLED` 必須維持 `false`，除了蝦皮和酷澎以外的外出網址不會被改寫。蝦皮商品與「前往搜尋」連結會改成 `https://s.shopee.tw/an_redir`，`affiliate_id` 預設 `16330620037`，可用環境變數 `SHOPEE_AFFILIATE_ID` 覆寫，`sub_id` 是 `bibisaru`。酷澎的「前往搜尋」改成 `https://link.tw.coupang.com/re2/AFFKOLSRP`，`lptag` 預設 `AF6766993`，可用環境變數 `COUPANG_AFFILIATE_ID` 覆寫，`pageKey` 是原本的關鍵字，不加 `traceid`。抓到的酷澎商品連結改成同網域的 `AFFSDP`。抓商品的請求仍打原本的搜尋頁。單元測試會鎖住這個開關。
+聯盟參數只准加在 `shared/affiliate.ts` 的 `applyAffiliate`。`AFFILIATE_ENABLED` 必須維持 `false`，除了蝦皮和酷澎以外的外出網址不會被改寫。蝦皮商品與「前往搜尋」連結會改成 `https://s.shopee.tw/an_redir`，`affiliate_id` 預設 `16330620037`，可用環境變數 `SHOPEE_AFFILIATE_ID` 覆寫，`sub_id` 是 `bibisaru`。酷澎的「前往搜尋」改成 `https://link.tw.coupang.com/re2/AFFKOLSRP`，`lptag` 預設 `AF6766993`，可用環境變數 `COUPANG_AFFILIATE_ID` 覆寫，`pageKey` 是原本的關鍵字，不加 `traceid`。商品清單改打 Partners Open API（`COUPANG_ACCESS_KEY`、`COUPANG_SECRET_KEY`，Pages secrets）。API 回的 `productUrl` 已是分潤連結，原樣使用。金鑰缺或 API 失敗時不抓 HTML，改顯示「暫時無法取得」和上面的分潤搜尋連結。單元測試會鎖住這個開關。

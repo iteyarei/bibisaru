@@ -1,5 +1,6 @@
 # Cloudflare Pages. Dashboard build uses the same output directory.
-# No environment variables are required for v1.
+# Coupang product search needs Pages secrets COUPANG_ACCESS_KEY and COUPANG_SECRET_KEY.
+# Without them, 酷澎 shows 暫時無法取得 and the affiliate search link.
 name = "bibisaru"
 compatibility_date = "2026-10-12"
 compatibility_flags = ["nodejs_compat"]

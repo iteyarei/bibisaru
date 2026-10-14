@@ -36,8 +36,8 @@ describe("live platform adapters", () => {
       expect(platform?.count, id).toBeGreaterThan(0);
     }
 
-    // Coupang sometimes returns the product HTML and sometimes a 403.
-    // Either result is valid: real rows, or a link-out with no invented items.
+    // Coupang uses the Partners API when the Pages secrets are set.
+    // Without keys, or when the API fails, the section is a link-out and no invented items.
     const coupang = response.platforms.find((item) => item.id === "coupang");
     expect(["ok", "unavailable"]).toContain(coupang?.status);
     if (coupang?.status === "ok") expect(coupang.count).toBeGreaterThan(0);
@@ -50,7 +50,7 @@ describe("live platform adapters", () => {
     );
     if (coupang?.status === "ok") {
       for (const product of response.results.filter((item) => item.platform === "coupang")) {
-        expect(product.url.startsWith("https://link.tw.coupang.com/re2/")).toBe(true);
+        expect(product.url.startsWith("https://")).toBe(true);
       }
     }
 
