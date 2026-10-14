@@ -106,10 +106,16 @@ describe("coupang partners signature", () => {
 
 describe("coupang partners search", () => {
   it("sends a signed request and keeps productUrl and productPrice", async () => {
-    const seen: Array<{ url: string; authorization: string }> = [];
+    const seen: Array<{ url: string; authorization: string; accept: string; contentType: string; userAgent: string }> = [];
     const fetchImpl: typeof fetch = async (input, init) => {
       const headers = new Headers(init?.headers);
-      seen.push({ url: String(input), authorization: headers.get("authorization") ?? "" });
+      seen.push({
+        url: String(input),
+        authorization: headers.get("authorization") ?? "",
+        accept: headers.get("accept") ?? "",
+        contentType: headers.get("content-type") ?? "",
+        userAgent: headers.get("user-agent") ?? "",
+      });
       return new Response(JSON.stringify(partnerPayload()), {
         status: 200,
         headers: { "content-type": "application/json" },
@@ -136,6 +142,9 @@ describe("coupang partners search", () => {
     expect(call?.authorization).toBe(
       `CEA algorithm=HmacSHA256, access-key=${ACCESS_KEY}, signed-date=${SIGNATURE_VECTOR.signedDate}, signature=${SIGNATURE_VECTOR.hex}`,
     );
+    expect(call?.accept).toBe("application/json");
+    expect(call?.contentType).toBe("application/json;charset=UTF-8");
+    expect(call?.userAgent).toBe("bibisaru/1.0");
 
     expect(products).toHaveLength(3);
     expect(products?.[0]).toMatchObject({
@@ -175,13 +184,34 @@ describe("coupang partners search", () => {
   });
 
   it("reports http status, a clipped rMessage, and exceptions without key values", async () => {
-    const httpFetch: typeof fetch = async () => new Response("nope", { status: 403 });
+    const httpFetch: typeof fetch = async () =>
+      new Response(JSON.stringify({ rCode: "0", data: {} }), { status: 503 });
     const httpOutcome = await searchCoupangPartners("電鍋", {
       fetchImpl: httpFetch,
       accessKey: ACCESS_KEY,
       secretKey: SIGNATURE_VECTOR.secret,
     });
-    expect(httpOutcome).toEqual({ products: null, reason: "http_403" });
+    expect(httpOutcome).toEqual({ products: null, reason: "http_503" });
+
+    const html = `<!DOCTYPE html><html><head><title>Access Denied</title></head><body>${SIGNATURE_VECTOR.secret}</body></html>`;
+    const htmlFetch: typeof fetch = async () => new Response(html, { status: 200 });
+    const htmlOutcome = await searchCoupangPartners("電鍋", {
+      fetchImpl: htmlFetch,
+      accessKey: ACCESS_KEY,
+      secretKey: SIGNATURE_VECTOR.secret,
+    });
+    expect(htmlOutcome).toEqual({ products: null, reason: "html_200: Access Denied" });
+    expect(htmlOutcome.reason?.includes(SIGNATURE_VECTOR.secret)).toBe(false);
+
+    const bare = `<!DOCTYPE html><html><body>${"Attention Required ".repeat(20)}</body></html>`;
+    const bareFetch: typeof fetch = async () => new Response(bare, { status: 403 });
+    const bareOutcome = await searchCoupangPartners("電鍋", {
+      fetchImpl: bareFetch,
+      accessKey: ACCESS_KEY,
+      secretKey: SIGNATURE_VECTOR.secret,
+    });
+    expect(bareOutcome.reason?.startsWith("html_403: Attention Required")).toBe(true);
+    expect((bareOutcome.reason ?? "").slice("html_403: ".length).length).toBeLessThanOrEqual(150);
 
     const longMessage = `${"x".repeat(80)} ${SIGNATURE_VECTOR.secret} ${"y".repeat(80)}`;
     const rcodeFetch: typeof fetch = async () =>

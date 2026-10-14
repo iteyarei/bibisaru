@@ -147,12 +147,20 @@ function missingKeysReason(accessPresent: boolean, secretPresent: boolean): stri
   return `missing_keys COUPANG_ACCESS_KEY=${accessPresent} COUPANG_SECRET_KEY=${secretPresent}`;
 }
 
-function publicText(text: string, secrets: readonly string[]): string {
+function publicText(text: string, secrets: readonly string[], limit = REASON_LIMIT): string {
   let out = text.replace(/[\r\n]+/g, " ");
   const needles = secrets.filter((secret) => secret.length >= 8).sort((a, b) => b.length - a.length);
   for (const secret of needles) out = out.split(secret).join("[redacted]");
-  out = out.trim();
-  return out.length > REASON_LIMIT ? out.slice(0, REASON_LIMIT) : out;
+  out = out.replace(/\s+/g, " ").trim();
+  return out.length > limit ? out.slice(0, limit) : out;
+}
+
+/** Title text when the gateway returns a document, otherwise the start of the body with tags removed. */
+function htmlReason(status: number, text: string, secrets: readonly string[]): string {
+  const title = /<title\b[^>]*>([\s\S]*?)<\/title>/i.exec(text);
+  const source = title?.[1]?.trim() ? title[1] : text;
+  const stripped = source.replace(/<[^>]*>/g, " ");
+  return `html_${status}: ${publicText(stripped, secrets, 150)}`;
 }
 
 function exceptionReason(error: unknown, secrets: readonly string[]): string {
@@ -193,21 +201,23 @@ export async function searchCoupangPartners(
       withEdgeCache({
         method: "GET",
         headers: {
-          accept: "application/json",
+          Accept: "application/json",
+          "Content-Type": "application/json;charset=UTF-8",
+          "User-Agent": "bibisaru/1.0",
           Authorization: coupangAuthorization(keys.accessKey, signedDate, signature),
         },
         redirect: "follow",
         signal: AbortSignal.timeout(8_000),
       }),
     );
-    if (!response.ok) return { products: null, reason: `http_${response.status}` };
     const text = await response.text();
     let payload: unknown;
     try {
       payload = JSON.parse(text) as unknown;
-    } catch (error) {
-      return { products: null, reason: exceptionReason(error, secrets) };
+    } catch {
+      return { products: null, reason: htmlReason(response.status, text, secrets) };
     }
+    if (!response.ok) return { products: null, reason: `http_${response.status}` };
     const root = payload && typeof payload === "object" && !Array.isArray(payload)
       ? (payload as Record<string, unknown>)
       : null;
