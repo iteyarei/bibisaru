@@ -416,6 +416,22 @@ export const SPLURGE_NAMES = [
   "電子體溫計",
 ] as const;
 
+export interface SplurgeField {
+  value: string;
+  focus(options?: { preventScroll?: boolean }): void;
+  blur(): void;
+}
+
+/**
+ * Write the picked name. A focused field opens the phone keyboard, so only a
+ * desktop pointer (hover + fine) places the caret. Phones blur instead.
+ */
+export function applySplurgeName(field: SplurgeField, name: string, fineHoverPointer: boolean): void {
+  field.value = name;
+  if (fineHoverPointer) field.focus({ preventScroll: true });
+  else field.blur();
+}
+
 /** Pick a pool name. The same name is not returned twice in a row when the pool has another choice. */
 export function pickSplurgeName(previous = "", random: () => number = Math.random): string {
   const names = SPLURGE_NAMES;
