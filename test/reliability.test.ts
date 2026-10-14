@@ -138,7 +138,11 @@ describe("unavailable reasons and cache", () => {
     expect(unavailableNote("timeout", "TPE")).toBe("原因：timeout · TPE");
     expect(unavailableNote("http_403", "")).toBe("原因：http_403");
     expect(unavailableNote(undefined, "TPE")).toBe("TPE");
+    expect(unavailableNote("http_403", "HKG", "IAD")).toBe("原因：http_403 · HKG · fetchColo IAD");
     expect(unavailableLogLine("pxgo", "timeout", "TPE")).toBe("reason=timeout colo=TPE platform=pxgo");
+    expect(unavailableLogLine("pxgo", "http_403", "HKG", "IAD")).toBe(
+      "reason=http_403 colo=HKG fetchColo=IAD platform=pxgo",
+    );
     const lines: string[] = [];
     logUnavailableShops(
       [

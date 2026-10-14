@@ -27,7 +27,12 @@ function outbound(href: string, className: string, text: string): HTMLAnchorElem
   return link;
 }
 
-export function renderNotices(root: HTMLElement, notices: readonly PlatformReport[], colo = ""): void {
+export function renderNotices(
+  root: HTMLElement,
+  notices: readonly PlatformReport[],
+  colo = "",
+  fetchColo = "",
+): void {
   root.replaceChildren();
   for (const notice of notices) {
     const platform = platformById(notice.id);
@@ -43,7 +48,7 @@ export function renderNotices(root: HTMLElement, notices: readonly PlatformRepor
       ),
     );
     if (notice.status === "unavailable") {
-      const detail = unavailableNote(notice.reason, colo);
+      const detail = unavailableNote(notice.reason, colo, fetchColo);
       if (detail) copy.append(el("p", "why", detail));
     }
     const link = outbound(notice.searchUrl, "", `${messages.goSearch} ↗`);

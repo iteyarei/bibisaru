@@ -112,7 +112,7 @@ function render(): void {
             prefs.platforms[platform.id] && (platform.status === "unavailable" || platform.status === "empty"),
         )
       : [];
-  renderNotices(noticeRoot, notices, response?.meta.colo ?? "");
+  renderNotices(noticeRoot, notices, response?.meta.colo ?? "", response?.meta.fetchColo ?? "");
   renderStage(stage, {
     loading,
     error,

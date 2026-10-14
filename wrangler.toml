@@ -5,3 +5,8 @@ name = "bibisaru"
 compatibility_date = "2026-10-12"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "dist"
+
+# Supported for Pages Functions. Smart Placement may move the Function closer
+# to an upstream, but it cannot pin or avoid a colo, so HKG can still run it.
+[placement]
+mode = "smart"
