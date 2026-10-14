@@ -47,15 +47,15 @@ npm run test:live
 
 ## 搜尋怎麼運作
 
-`GET /api/search?q=耳機&platforms=momo,pchome,yahoo,coupang,shopee,pxgo,etmall,kingstone,sanmin,eslite`
+`GET /api/search?q=耳機&platforms=momo,pchome,yahoo,coupang,shopee,pxgo,etmall,kingstone,sanmin`
 
 每家最多回 24 筆，欄位是 `{ platform, title, price, image, url }`。某一家失敗不會讓其他家一起失敗。失敗的那一家在畫面上顯示「暫時無法取得」，並給一顆按鈕打開該平台自己的搜尋頁。
 
-同一組關鍵字與平台組合會在邊緣快取約 3 分鐘，瀏覽器再快取 30 秒。每個 IP 大約每分鐘 20 次未命中快取的搜尋。沒有重試。
+同一組關鍵字與平台組合，全部抓到時會在邊緣快取約 3 分鐘，瀏覽器再快取 30 秒。若 momo、PChome、Yahoo、全聯、東森、金石堂、三民有一家失敗，這次只快取約 20 秒，避免把暫時失敗記太久。酷澎、蝦皮常常只有前往搜尋，不算這次失敗。每個抓取的店（酷澎除外）失敗或逾時會隔約 0.3 秒再要一次。每個 IP 大約每分鐘 20 次未命中快取的搜尋。
 
 搜尋框和排除關鍵字框在有字時，文字右側會出現清除鈕，只清空該欄並把游標放回去，不會重新搜尋。結果卡底部的「搜尋同款」會把商品名收成品牌加型號（或前幾個詞）再搜全部平台。排除關鍵字、平台開關、排序、價格範圍都在瀏覽器裡做，並記在 `localStorage`（`bibisaru.prefs.v1`）。價格範圍空白表示不限；若最低填得比最高高，會把兩個數字對調後再篩。搜尋欄用空格分開的每個詞都要出現在商品名稱裡（忽略大小寫、全形半形，也忽略空格和符號，所以 fold8 對得上 Fold 8）。超過兩個字、中間沒有空格的中文詞，若整段對不上，會再用品牌和品類詞拆開（大同、電鍋這類；沒有收錄的部分用斷詞，再不行就兩字一組），片段都要出現、順序不限。整段連在一起的結果，在相關排序裡排在拆開比對的前面。同義詞在 `shared/synonyms.ts`，例如 NS2 與 Switch 2、PS5 與 PlayStation 5。各平台仍用整句去搜，過濾在瀏覽器做。PChome 的商品名稱若少了品牌、說明第一行只是多出短短的品牌前綴，會用那一行當名稱。外連是 `target="_blank"`、`rel="noopener nofollow sponsored"`。
 
-能判斷庫存的店，已售完的商品預設不列出：momo（`goodsStock` 為 0）、Yahoo（`ec_has_stock` 為 0 或庫存數為 0）、全聯（`is_sold_out` 或庫存為 0）、東森（`haveStocks` 為 false）、金石堂（按鈕是「貨到通知」）、三民（標成「無庫存」）。PChome 的搜尋 JSON 沒有庫存欄位，無法判斷，所以照頁面上的結果列出。酷澎、蝦皮、誠品目前多半是前往搜尋，沒有可判斷的庫存。
+能判斷庫存的店，已售完的商品預設不列出：momo（`goodsStock` 為 0）、Yahoo（`ec_has_stock` 為 0 或庫存數為 0）、全聯（`is_sold_out` 或庫存為 0）、東森（`haveStocks` 為 false）、金石堂（按鈕是「貨到通知」）、三民（標成「無庫存」）。PChome 的搜尋 JSON 沒有庫存欄位，無法判斷，所以照頁面上的結果列出。酷澎、蝦皮目前多半是前往搜尋，沒有可判斷的庫存。
 
 ## 這台機器實測（2026-10-12）
 
@@ -74,7 +74,6 @@ npm run test:live
 | 東森 | 有抓到商品（48 筆，頁面只用前 24） | `etmall.com.tw/Search/Get` JSON，用成交價 `finalPrice` |
 | 金石堂 | 有抓到商品（48 筆，頁面只用前 24） | 讀搜尋頁 HTML 的商品卡 |
 | 三民 | 有抓到商品 | 讀搜尋頁 HTML。有優惠價就用優惠價，否則用定價 |
-| 誠品 | 拿不到，只提供前往搜尋 | 搜尋頁被 Cloudflare 擋下（403）。不捏造商品 |
 
 沒有接上的店，以及原因：
 
@@ -85,8 +84,9 @@ npm run test:live
 - friDay購物：搜尋頁是空殼，沒有商品。
 - 康是美、屈臣氏：頁面或 API 被擋，沒有可解析的搜尋結果。
 - 全聯官網 `shop.pxmart.com.tw` 回 403；實際接的是全聯全電商（PX Go / pxbox）。
+- 誠品：搜尋頁被 Cloudflare 擋下，沒有可解析的商品，所以沒有接上。
 
-蝦皮、誠品在 Cloudflare 的出口 IP 上可能和這台機器不一樣。
+蝦皮在 Cloudflare 的出口 IP 上可能和這台機器不一樣。
 
 ## 風險
 

@@ -7,8 +7,7 @@ export type PlatformId =
   | "pxgo"
   | "etmall"
   | "kingstone"
-  | "sanmin"
-  | "eslite";
+  | "sanmin";
 
 export type SortMode = "price-asc" | "price-desc" | "relevance";
 
@@ -30,7 +29,7 @@ export interface PlatformReport {
   status: PlatformStatus;
   count: number;
   searchUrl: string;
-  /** Coupang-only failure diagnostic. Never contains key material. */
+  /** Why this shop is unavailable. Never contains secrets. */
   reason?: string;
 }
 
@@ -46,7 +45,7 @@ export interface PlatformResult {
   status: "ok" | "unavailable";
   products: Product[];
   searchUrl: string;
-  /** Coupang-only failure diagnostic. Never contains key material. */
+  /** Why this shop is unavailable. Never contains secrets. */
   reason?: string;
 }
 

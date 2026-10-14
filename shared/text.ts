@@ -10,7 +10,6 @@ const PRODUCT_HOSTS: Record<PlatformId, RegExp> = {
   etmall: /(^|\.)etmall\.com\.tw$/i,
   kingstone: /(^|\.)kingstone\.com\.tw$/i,
   sanmin: /(^|\.)sanmin\.com\.tw$/i,
-  eslite: /(^|\.)eslite\.com$/i,
 };
 
 export function decodeHtml(value: string): string {

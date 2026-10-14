@@ -40,7 +40,7 @@ export const zhTW = {
   empty: "找不到符合的商品，試試放寬價格、少一個排除字，或打開更多平台",
   reset: "重設篩選",
   introTitle: "輸入關鍵字，一次比較各家價格",
-  introBody: "momo、PChome、Yahoo 奇摩、酷澎、蝦皮、全聯、東森、金石堂、三民、誠品。沒有廣告。",
+  introBody: "momo、PChome、Yahoo 奇摩、酷澎、蝦皮、全聯、東森、金石堂、三民。沒有廣告。",
   unavailable: "{name}暫時無法取得",
   platformEmpty: "{name}沒有相符商品",
   goSearch: "前往搜尋",

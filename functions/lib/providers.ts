@@ -10,6 +10,12 @@ import {
   yahooProducts,
 } from "../../shared/normalize";
 import { platformSearchUrl, rawSearchUrl } from "../../shared/platforms";
+import {
+  failureReason,
+  PLATFORM_TIMEOUT_MS,
+  retriesPlatform,
+  retryPlatform,
+} from "../../shared/reliability";
 import { unavailableResult } from "../../shared/search";
 import type { PlatformFetcher, PlatformId, PlatformResult, Product } from "../../shared/types";
 
@@ -23,7 +29,6 @@ const DOCUMENT_HEADERS = {
   "upgrade-insecure-requests": "1",
 };
 
-const TIMEOUT_MS = 8_000;
 const MAX_BYTES = 2_000_000;
 
 function withEdgeCache(init: RequestInit): RequestInit {
@@ -59,66 +64,89 @@ async function readLimited(response: Response): Promise<string> {
 async function request(
   url: string,
   headers: Record<string, string>,
-  extra?: { method?: string; body?: string },
-): Promise<{ ok: boolean; text: string }> {
+  extra?: { method?: string; body?: string; fresh?: boolean },
+): Promise<{ ok: boolean; status: number; text: string }> {
   const method = extra?.method ?? "GET";
+  const fresh = extra?.fresh ?? false;
   const init: RequestInit = {
     method,
     body: extra?.body,
     headers: { "user-agent": USER_AGENT, "accept-language": "zh-TW,zh;q=0.9,en;q=0.8", ...headers },
     redirect: "follow",
-    signal: AbortSignal.timeout(TIMEOUT_MS),
+    signal: AbortSignal.timeout(PLATFORM_TIMEOUT_MS),
   };
-  const response = await fetch(url, method === "GET" ? withEdgeCache(init) : init);
-  return { ok: response.ok, text: await readLimited(response) };
+  if (fresh) init.cache = "no-store";
+  const response = await fetch(url, !fresh && method === "GET" ? withEdgeCache(init) : init);
+  return { ok: response.ok, status: response.status, text: await readLimited(response) };
+}
+
+function httpFailure(id: PlatformId, query: string, status: number): PlatformResult {
+  return unavailableResult(id, query, `http_${status}`);
+}
+
+function parseFailure(id: PlatformId, query: string): PlatformResult {
+  return unavailableResult(id, query, "parse_error");
+}
+
+/** One fresh try after a failure. Coupang keeps its own API path and is not wrapped. */
+function scrape(
+  id: PlatformId,
+  query: string,
+  run: (fresh: boolean) => Promise<PlatformResult>,
+): Promise<PlatformResult> {
+  const once = async (fresh: boolean) => {
+    try {
+      return await run(fresh);
+    } catch (error) {
+      return unavailableResult(id, query, failureReason(error));
+    }
+  };
+  if (!retriesPlatform(id)) return once(false);
+  return retryPlatform(({ fresh }) => once(fresh));
 }
 
 function ok(id: PlatformId, query: string, products: Product[]): PlatformResult {
   return { id, status: "ok", products, searchUrl: platformSearchUrl(id, query) };
 }
 
-const fetchPchome: PlatformFetcher = async (query) => {
-  try {
+const fetchPchome: PlatformFetcher = (query) =>
+  scrape("pchome", query, async (fresh) => {
     const url = `https://ecshweb.pchome.com.tw/search/v3.3/all/results?q=${encodeURIComponent(query)}&page=1&sort=rnk/dc`;
-    const { ok: fine, text } = await request(url, {
-      accept: "application/json, text/plain, */*",
-      referer: "https://24h.pchome.com.tw/",
-    });
-    if (!fine) return unavailableResult("pchome", query);
-    const products = normalizePchome(JSON.parse(text) as unknown);
+    const response = await request(
+      url,
+      { accept: "application/json, text/plain, */*", referer: "https://24h.pchome.com.tw/" },
+      { fresh },
+    );
+    if (!response.ok) return httpFailure("pchome", query, response.status);
+    const products = normalizePchome(JSON.parse(response.text) as unknown);
     return ok("pchome", query, products);
-  } catch {
-    return unavailableResult("pchome", query);
-  }
-};
+  });
 
-const fetchYahoo: PlatformFetcher = async (query) => {
-  try {
-    const { ok: fine, text } = await request(rawSearchUrl("yahoo", query), {
-      ...DOCUMENT_HEADERS,
-      "sec-fetch-site": "none",
-    });
-    const products = fine ? yahooProducts(text) : null;
-    if (!products) return unavailableResult("yahoo", query);
+const fetchYahoo: PlatformFetcher = (query) =>
+  scrape("yahoo", query, async (fresh) => {
+    const response = await request(
+      rawSearchUrl("yahoo", query),
+      { ...DOCUMENT_HEADERS, "sec-fetch-site": "none" },
+      { fresh },
+    );
+    if (!response.ok) return httpFailure("yahoo", query, response.status);
+    const products = yahooProducts(response.text);
+    if (!products) return parseFailure("yahoo", query);
     return ok("yahoo", query, products);
-  } catch {
-    return unavailableResult("yahoo", query);
-  }
-};
+  });
 
-const fetchMomo: PlatformFetcher = async (query) => {
-  try {
-    const { ok: fine, text } = await request(rawSearchUrl("momo", query), {
-      ...DOCUMENT_HEADERS,
-      "sec-fetch-site": "none",
-    });
-    const products = fine ? momoProducts(text) : null;
-    if (!products) return unavailableResult("momo", query);
+const fetchMomo: PlatformFetcher = (query) =>
+  scrape("momo", query, async (fresh) => {
+    const response = await request(
+      rawSearchUrl("momo", query),
+      { ...DOCUMENT_HEADERS, "sec-fetch-site": "none" },
+      { fresh },
+    );
+    if (!response.ok) return httpFailure("momo", query, response.status);
+    const products = momoProducts(response.text);
+    if (!products) return parseFailure("momo", query);
     return ok("momo", query, products);
-  } catch {
-    return unavailableResult("momo", query);
-  }
-};
+  });
 
 const fetchCoupang: PlatformFetcher = async (query) => {
   try {
@@ -134,8 +162,8 @@ const fetchCoupang: PlatformFetcher = async (query) => {
   }
 };
 
-const fetchPxgo: PlatformFetcher = async (query) => {
-  try {
+const fetchPxgo: PlatformFetcher = (query) =>
+  scrape("pxgo", query, async (fresh) => {
     const body = JSON.stringify({
       search_setting_type: 1,
       keyword: query,
@@ -148,7 +176,7 @@ const fetchPxgo: PlatformFetcher = async (query) => {
       is_using_prod_es: false,
       skip_brand_detection: false,
     });
-    const { ok: fine, text } = await request(
+    const response = await request(
       "https://api-pxbox.es.pxmart.com.tw/app/3.0/spu/single_search",
       {
         accept: "application/json",
@@ -156,70 +184,60 @@ const fetchPxgo: PlatformFetcher = async (query) => {
         origin: "https://pxbox.es.pxmart.com.tw",
         referer: "https://pxbox.es.pxmart.com.tw/",
       },
-      { method: "POST", body },
+      { method: "POST", body, fresh },
     );
-    const products = fine ? pxgoProducts(JSON.parse(text) as unknown) : null;
-    if (!products) return unavailableResult("pxgo", query);
+    if (!response.ok) return httpFailure("pxgo", query, response.status);
+    const products = pxgoProducts(JSON.parse(response.text) as unknown);
+    if (!products) return parseFailure("pxgo", query);
     return ok("pxgo", query, products);
-  } catch {
-    return unavailableResult("pxgo", query);
-  }
-};
+  });
 
-const fetchEtmall: PlatformFetcher = async (query) => {
-  try {
-    const { ok: fine, text } = await request(
+const fetchEtmall: PlatformFetcher = (query) =>
+  scrape("etmall", query, async (fresh) => {
+    const response = await request(
       `https://www.etmall.com.tw/Search/Get?keyword=${encodeURIComponent(query)}`,
       {
         accept: "application/json, text/plain, */*",
         referer: rawSearchUrl("etmall", query),
       },
+      { fresh },
     );
-    const products = fine ? etmallProducts(JSON.parse(text) as unknown) : null;
-    if (!products) return unavailableResult("etmall", query);
+    if (!response.ok) return httpFailure("etmall", query, response.status);
+    const products = etmallProducts(JSON.parse(response.text) as unknown);
+    if (!products) return parseFailure("etmall", query);
     return ok("etmall", query, products);
-  } catch {
-    return unavailableResult("etmall", query);
-  }
-};
+  });
 
-const fetchKingstone: PlatformFetcher = async (query) => {
-  try {
-    const { ok: fine, text } = await request(rawSearchUrl("kingstone", query), {
-      ...DOCUMENT_HEADERS,
-      referer: "https://www.kingstone.com.tw/",
-      "sec-fetch-site": "same-origin",
-    });
-    const products = fine ? kingstoneProducts(text) : null;
-    if (!products) return unavailableResult("kingstone", query);
+const fetchKingstone: PlatformFetcher = (query) =>
+  scrape("kingstone", query, async (fresh) => {
+    const response = await request(
+      rawSearchUrl("kingstone", query),
+      { ...DOCUMENT_HEADERS, referer: "https://www.kingstone.com.tw/", "sec-fetch-site": "same-origin" },
+      { fresh },
+    );
+    if (!response.ok) return httpFailure("kingstone", query, response.status);
+    const products = kingstoneProducts(response.text);
+    if (!products) return parseFailure("kingstone", query);
     return ok("kingstone", query, products);
-  } catch {
-    return unavailableResult("kingstone", query);
-  }
-};
+  });
 
-const fetchSanmin: PlatformFetcher = async (query) => {
-  try {
-    const { ok: fine, text } = await request(rawSearchUrl("sanmin", query), {
-      ...DOCUMENT_HEADERS,
-      referer: "https://www.sanmin.com.tw/",
-      "sec-fetch-site": "same-origin",
-    });
-    const products = fine ? sanminProducts(text) : null;
-    if (!products) return unavailableResult("sanmin", query);
+const fetchSanmin: PlatformFetcher = (query) =>
+  scrape("sanmin", query, async (fresh) => {
+    const response = await request(
+      rawSearchUrl("sanmin", query),
+      { ...DOCUMENT_HEADERS, referer: "https://www.sanmin.com.tw/", "sec-fetch-site": "same-origin" },
+      { fresh },
+    );
+    if (!response.ok) return httpFailure("sanmin", query, response.status);
+    const products = sanminProducts(response.text);
+    if (!products) return parseFailure("sanmin", query);
     return ok("sanmin", query, products);
-  } catch {
-    return unavailableResult("sanmin", query);
-  }
-};
+  });
 
-/** 誠品線上 sits behind a Cloudflare challenge from this environment. Link out, don't invent rows. */
-const fetchEslite: PlatformFetcher = async (query) => unavailableResult("eslite", query);
-
-const fetchShopee: PlatformFetcher = async (query) => {
-  try {
+const fetchShopee: PlatformFetcher = (query) =>
+  scrape("shopee", query, async (fresh) => {
     const keyword = encodeURIComponent(query);
-    const { ok: fine, text } = await request(
+    const response = await request(
       `https://shopee.tw/api/v4/search/search_items?by=relevancy&keyword=${keyword}&limit=20&newest=0&order=desc&page_type=search&scenario=PAGE_GLOBAL_SEARCH&version=2`,
       {
         accept: "application/json",
@@ -227,15 +245,13 @@ const fetchShopee: PlatformFetcher = async (query) => {
         "x-api-source": "pc",
         "x-shopee-language": "zh-Hant",
       },
+      { fresh },
     );
-    if (!fine) return unavailableResult("shopee", query);
-    const data = JSON.parse(text) as { error?: unknown };
-    if (data.error) return unavailableResult("shopee", query);
+    if (!response.ok) return httpFailure("shopee", query, response.status);
+    const data = JSON.parse(response.text) as { error?: unknown };
+    if (data.error) return unavailableResult("shopee", query, "exception: api error");
     return ok("shopee", query, normalizeShopee(data));
-  } catch {
-    return unavailableResult("shopee", query);
-  }
-};
+  });
 
 export const fetchers: Record<PlatformId, PlatformFetcher> = {
   momo: fetchMomo,
@@ -247,5 +263,4 @@ export const fetchers: Record<PlatformId, PlatformFetcher> = {
   etmall: fetchEtmall,
   kingstone: fetchKingstone,
   sanmin: fetchSanmin,
-  eslite: fetchEslite,
 };
