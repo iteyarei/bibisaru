@@ -43,6 +43,6 @@ export async function searchPlatforms(
     fetchedAt: now().toISOString(),
     results: settled.flatMap((result) => (result.status === "ok" ? result.products : [])),
     platforms,
-    meta: { colo },
+    meta: { colo, fetchColo: "" },
   };
 }

@@ -147,19 +147,27 @@ export function normalizeColo(value: unknown): string {
   return colo.toUpperCase();
 }
 
-export function unavailableLogLine(id: string, reason: string | undefined, colo: string): string {
+export function unavailableLogLine(
+  id: string,
+  reason: string | undefined,
+  colo: string,
+  fetchColo = "",
+): string {
   const why = reason?.replace(/[\r\n]+/g, " ").trim() || "unknown";
   const where = colo.trim() || "unknown";
-  return `reason=${why} colo=${where} platform=${id}`;
+  const fetched = fetchColo.trim();
+  const fetchPart = fetched ? ` fetchColo=${fetched}` : "";
+  return `reason=${why} colo=${where}${fetchPart} platform=${id}`;
 }
 
 export function logUnavailableShops(
   platforms: readonly { id: string; status: string; reason?: string }[],
   colo: string,
   write: (line: string) => void = console.log,
+  fetchColo = "",
 ): void {
   for (const platform of platforms) {
     if (platform.status !== "unavailable") continue;
-    write(unavailableLogLine(platform.id, platform.reason, colo));
+    write(unavailableLogLine(platform.id, platform.reason, colo, fetchColo));
   }
 }

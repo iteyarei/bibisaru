@@ -44,6 +44,8 @@ export const zhTW = {
   unavailable: "{name}暫時無法取得",
   unavailableReason: "原因：{reason} · {colo}",
   unavailableReasonOnly: "原因：{reason}",
+  unavailableReasonFetch: "原因：{reason} · {colo} · fetchColo {fetchColo}",
+  unavailableReasonFetchOnly: "原因：{reason} · fetchColo {fetchColo}",
   platformEmpty: "{name}沒有相符商品",
   goSearch: "前往搜尋",
   noData: "這次沒有取得商品，可以直接前往各平台搜尋",
@@ -68,12 +70,23 @@ export function fill(template: string, vars: Record<string, string | number>): s
   return template.replace(/\{(\w+)\}/g, (_match, key: string) => String(vars[key] ?? ""));
 }
 
-/** Small gray line under a 暫時無法取得 card. Colo is the Cloudflare airport code. */
-export function unavailableNote(reason: string | undefined, colo: string | undefined): string {
+/** Small gray line under a 暫時無法取得 card. fetchColo is where the outbound fetch ran. */
+export function unavailableNote(
+  reason: string | undefined,
+  colo: string | undefined,
+  fetchColo: string | undefined = "",
+): string {
   const why = reason?.trim() ?? "";
   const where = colo?.trim() ?? "";
+  const fetched = fetchColo?.trim() ?? "";
+  if (why && where && fetched) {
+    return fill(messages.unavailableReasonFetch, { reason: why, colo: where, fetchColo: fetched });
+  }
+  if (why && fetched) return fill(messages.unavailableReasonFetchOnly, { reason: why, fetchColo: fetched });
   if (why && where) return fill(messages.unavailableReason, { reason: why, colo: where });
   if (why) return fill(messages.unavailableReasonOnly, { reason: why });
+  if (where && fetched) return `${where} · fetchColo ${fetched}`;
+  if (fetched) return `fetchColo ${fetched}`;
   return where;
 }
 

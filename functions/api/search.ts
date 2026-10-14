@@ -10,6 +10,7 @@ import {
   searchCacheVersion,
 } from "../../shared/reliability";
 import { searchPlatforms } from "../../shared/search";
+import { readFetchColo } from "../../shared/trace";
 import { fetchers } from "../lib/providers";
 
 const allow = createRateLimiter(20, 60_000);
@@ -57,8 +58,10 @@ export const onRequestGet: PagesFunction<SearchEnv> = async (context) => {
   }
 
   const colo = normalizeColo(context.request.cf?.colo);
+  const fetchColoPromise = readFetchColo();
   const body = await searchPlatforms(query, ids, fetchers, () => new Date(), colo);
-  logUnavailableShops(body.platforms, colo);
+  body.meta.fetchColo = await fetchColoPromise;
+  logUnavailableShops(body.platforms, colo, console.log, body.meta.fetchColo);
   const cacheControl = searchCacheControl(body.platforms);
   const response = json(body, 200, cacheControl);
   if (cacheControl !== "no-store") {

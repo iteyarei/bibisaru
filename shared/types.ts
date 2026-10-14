@@ -34,8 +34,10 @@ export interface PlatformReport {
 }
 
 export interface SearchMeta {
-  /** Cloudflare colo that served this search, such as TPE. Empty outside the edge. */
+  /** Colo that accepted the visitor, such as HKG. Empty outside the edge. */
   colo: string;
+  /** Colo where the outbound fetch ran. From cdn-cgi/trace. Empty if that probe failed. */
+  fetchColo: string;
 }
 
 export interface SearchResponse {

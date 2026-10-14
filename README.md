@@ -43,13 +43,13 @@ npm run test:live
 
 專案名稱建議用 `bibisaru`，免費網址就會是 `https://bibisaru.pages.dev`。`index.html` 裡的 canonical 與 Open Graph 網址目前寫這個。若實際網址不同，或之後改接自己的網域，請改 `index.html` 裡的這三個網址：`canonical`、`og:url`、`og:image`。`robots.txt` 和 `sitemap.xml` 會跟著當時的網址走，不用改。
 
-也可以之後用 Wrangler：`npx wrangler pages deploy dist`。`wrangler.toml` 已經寫好輸出目錄與 compatibility date。
+也可以之後用 Wrangler：`npx wrangler pages deploy dist`。`wrangler.toml` 已經寫好輸出目錄、compatibility date，以及 Pages Functions 的 Smart Placement（`[placement] mode = "smart"`）。Smart Placement 不能指定或避開某個機房。
 
 ## 搜尋怎麼運作
 
 `GET /api/search?q=耳機&platforms=momo,pchome,yahoo,coupang,shopee,pxgo,etmall,kingstone,sanmin`
 
-每家最多回 24 筆，欄位是 `{ platform, title, price, image, url }`。某一家失敗不會讓其他家一起失敗。失敗的那一家在畫面上顯示「暫時無法取得」，底下用淺灰色小字寫原因和 Cloudflare 機房（例如「原因：timeout · TPE」），並給一顆按鈕打開該平台自己的搜尋頁。回應的 `meta.colo` 是這次請求的機房代碼。
+每家最多回 24 筆，欄位是 `{ platform, title, price, image, url }`。某一家失敗不會讓其他家一起失敗。失敗的那一家在畫面上顯示「暫時無法取得」，底下用淺灰色小字寫原因和 Cloudflare 機房（例如「原因：http_403 · HKG · fetchColo IAD」），並給一顆按鈕打開該平台自己的搜尋頁。`meta.colo` 是訪客進來的機房。`meta.fetchColo` 是這次函式實際打出去的機房，來自 `https://www.cloudflare.com/cdn-cgi/trace` 的 `colo`，不含 IP。全聯從 HKG 會被 403，從 IAD 可以；Smart Placement 不會因此改走 IAD。
 
 同一組關鍵字與平台組合，全部抓到時會在邊緣快取約 3 分鐘，瀏覽器再快取 30 秒。快取鍵帶這次部署的版本，新版本不會沿用舊結果。若 momo、PChome、Yahoo、全聯、東森、金石堂、三民有一家失敗，這次回應是 `no-store`，不會被快取。酷澎、蝦皮常常只有前往搜尋，不算這次失敗。每個抓取的店（酷澎除外）失敗或逾時會再要一次：全聯隔約 0.8 秒、單次逾時 10 秒，其他店隔約 0.3 秒、單次逾時 8 秒。各店平行抓，最慢的一條仍低於 Pages 約 30 秒。每個 IP 大約每分鐘 20 次未命中快取的搜尋。
 
