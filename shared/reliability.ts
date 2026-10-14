@@ -18,7 +18,7 @@ export const SEARCH_DEGRADED_CACHE_SECONDS = 20;
  * These shops are often only a search link. Their failure must not throw away
  * a good cache of the shops that did return products.
  */
-export const EXPECTED_UNAVAILABLE: readonly PlatformId[] = ["coupang", "shopee", "eslite"];
+export const EXPECTED_UNAVAILABLE: readonly PlatformId[] = ["coupang", "shopee"];
 
 /** HTML or JSON scrapes. Coupang has its own API path and is not retried here. */
 export const RETRIED_PLATFORMS: readonly PlatformId[] = [

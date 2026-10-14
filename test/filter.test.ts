@@ -219,7 +219,6 @@ describe("keyword chips and query", () => {
       "etmall",
       "kingstone",
       "sanmin",
-      "eslite",
     ]);
     expect(parsePlatformParam("shopee,yahoo,pchome")).toEqual(["pchome", "yahoo", "shopee"]);
     expect(parsePlatformParam("shopee,pchome,nope")).toEqual(["pchome", "shopee"]);

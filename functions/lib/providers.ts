@@ -88,7 +88,7 @@ function parseFailure(id: PlatformId, query: string): PlatformResult {
   return unavailableResult(id, query, "parse_error");
 }
 
-/** One fresh try after a failure. Coupang and the link-only 誠品 adapter are not wrapped. */
+/** One fresh try after a failure. Coupang keeps its own API path and is not wrapped. */
 function scrape(
   id: PlatformId,
   query: string,
@@ -234,9 +234,6 @@ const fetchSanmin: PlatformFetcher = (query) =>
     return ok("sanmin", query, products);
   });
 
-/** 誠品線上 sits behind a Cloudflare challenge from this environment. Link out, don't invent rows. */
-const fetchEslite: PlatformFetcher = async (query) => unavailableResult("eslite", query, "exception: no fetch");
-
 const fetchShopee: PlatformFetcher = (query) =>
   scrape("shopee", query, async (fresh) => {
     const keyword = encodeURIComponent(query);
@@ -266,5 +263,4 @@ export const fetchers: Record<PlatformId, PlatformFetcher> = {
   etmall: fetchEtmall,
   kingstone: fetchKingstone,
   sanmin: fetchSanmin,
-  eslite: fetchEslite,
 };

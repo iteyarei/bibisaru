@@ -11,7 +11,6 @@ export const PLATFORM_IDS = [
   "etmall",
   "kingstone",
   "sanmin",
-  "eslite",
 ] as const;
 
 export const MAX_PER_PLATFORM = 24;
@@ -32,7 +31,6 @@ export const PLATFORMS: readonly PlatformMeta[] = [
   { id: "etmall", name: "東森", color: "#C2410C" },
   { id: "kingstone", name: "金石堂", color: "#A16207" },
   { id: "sanmin", name: "三民", color: "#1D4ED8" },
-  { id: "eslite", name: "誠品", color: "#44403C" },
 ];
 
 export function isPlatformId(value: string): value is PlatformId {
@@ -67,8 +65,6 @@ export function rawSearchUrl(id: PlatformId, query: string): string {
       return `https://www.kingstone.com.tw/search/key/${q}`;
     case "sanmin":
       return `https://www.sanmin.com.tw/search/index/?ct=K&k=${q}`;
-    case "eslite":
-      return `https://www.eslite.com/Search?keyword=${q}`;
   }
 }
 

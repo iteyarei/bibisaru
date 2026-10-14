@@ -7,8 +7,7 @@ export type PlatformId =
   | "pxgo"
   | "etmall"
   | "kingstone"
-  | "sanmin"
-  | "eslite";
+  | "sanmin";
 
 export type SortMode = "price-asc" | "price-desc" | "relevance";
 

@@ -52,7 +52,6 @@ describe("scraped platform retry", () => {
     expect(retriesPlatform("momo")).toBe(true);
     expect(retriesPlatform("pxgo")).toBe(true);
     expect(retriesPlatform("coupang")).toBe(false);
-    expect(retriesPlatform("eslite")).toBe(false);
     expect(worstScrapedWaitMs()).toBeLessThan(PAGES_REQUEST_LIMIT_MS);
   });
 });
@@ -72,9 +71,8 @@ describe("unavailable reasons and cache", () => {
       { id: "momo" as const, status: "ok" as const },
       { id: "coupang" as const, status: "unavailable" as const },
       { id: "shopee" as const, status: "unavailable" as const },
-      { id: "eslite" as const, status: "unavailable" as const },
     ];
-    expect(EXPECTED_UNAVAILABLE).toEqual(["coupang", "shopee", "eslite"]);
+    expect(EXPECTED_UNAVAILABLE).toEqual(["coupang", "shopee"]);
     expect(searchCacheSeconds(platforms)).toBe(180);
     expect(searchCacheControl(platforms)).toBe("public, max-age=30, s-maxage=180");
   });

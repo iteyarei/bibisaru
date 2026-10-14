@@ -58,11 +58,5 @@ describe("live platform adapters", () => {
     expect(shopee?.status).toBe("unavailable");
     expect(shopee?.count).toBe(0);
     expect(response.results.some((product) => product.platform === "shopee")).toBe(false);
-
-    const eslite = response.platforms.find((item) => item.id === "eslite");
-    expect(eslite?.status).toBe("unavailable");
-    expect(eslite?.count).toBe(0);
-    expect(response.results.some((product) => product.platform === "eslite")).toBe(false);
-    expect(eslite?.searchUrl).toContain("https://www.eslite.com/Search?keyword=");
   });
 });
