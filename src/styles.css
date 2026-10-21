@@ -470,6 +470,12 @@ header {
   padding: 10px 12px;
   margin-bottom: 10px;
   font-size: 14px;
+  max-width: 40%;
+  min-width: 320px;
+}
+
+@media (max-width: 640px) {
+  .notice { max-width: none; min-width: 0; }
 }
 
 .notice .dot {
@@ -480,7 +486,7 @@ header {
   flex: none;
 }
 
-.notice .copy { flex: 1; min-width: 0; }
+.notice .copy { flex: none; min-width: 0; white-space: nowrap; }
 
 .notice p { margin: 0; }
 
@@ -493,7 +499,9 @@ header {
 }
 
 .notice a {
-  flex: none;
+  flex: 1;
+  margin-left: 6px;
+  white-space: nowrap;
   height: 32px;
   padding: 0 12px;
   border-radius: 8px;
