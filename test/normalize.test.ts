@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AFFILIATE_ENABLED, applyAffiliate, shopeeAffiliateUrl } from "../shared/affiliate";
+import { applyAffiliate, shopeeAffiliateUrl } from "../shared/affiliate";
 import { filterBySearchTerms } from "../shared/filter";
 import {
   kingstoneProducts,
@@ -10,6 +10,9 @@ import {
   normalizePxgo,
   normalizeShopee,
   normalizeYahoo,
+  rakutenProducts,
+  rutenProducts,
+  rutenSearchIds,
   sanminProducts,
 } from "../shared/normalize";
 import { parsePrice } from "../shared/text";
@@ -134,7 +137,9 @@ describe("normalizeYahoo", () => {
     const products = normalizeYahoo(html);
     expect(products.map((product) => product.title)).toEqual(["AirPods Pro"]);
     expect(products[0].price).toBe(6450);
-    expect(products[0].url).toContain("https://tw.buy.yahoo.com/");
+    expect(products[0].url).toBe(
+      `https://product.mchannles.com/redirect_wa.php?k=2IsZi&uid1=bibisaru&tourl=${encodeURIComponent("https://tw.buy.yahoo.com/gdsale/airpods-11986319.html")}`,
+    );
   });
 });
 
@@ -362,7 +367,7 @@ describe("newer storefronts", () => {
       platform: "kingstone",
       title: "惠普耳機",
       price: 699,
-      url: "https://www.kingstone.com.tw/basic/3030000102785/",
+      url: `https://product.mchannles.com/redirect_wa.php?k=2IsZi&uid1=bibisaru&tourl=${encodeURIComponent("https://www.kingstone.com.tw/basic/3030000102785/")}`,
     });
     expect(kingstoneProducts("<html></html>")).toBeNull();
   });
@@ -387,9 +392,118 @@ describe("newer storefronts", () => {
 });
 
 describe("affiliate switch", () => {
-  it("stays off and does not rewrite urls", () => {
-    expect(AFFILIATE_ENABLED).toBe(false);
+  it("does not rewrite shops without a program", () => {
     const url = "https://24h.pchome.com.tw/prod/ABC";
     expect(applyAffiliate(url)).toBe(url);
+  });
+});
+
+function rakutenPage(items: unknown[]): string {
+  const data = { initialData: { searchPage: { result: { items } } } };
+  return `<html><script type="application/json" class="js-react-on-rails-component" data-component-name="SearchPage" data-dom-id="x">${JSON.stringify(data).replace(/</g, "\\u003c")}</script></html>`;
+}
+
+const rakutenItem = {
+  itemName: "POLYWELL 3.5mm耳塞式有線耳機麥克風",
+  itemUrl: "https://www.rakuten.com.tw/shop/polywell/product/f88b3l6sa/?s-id=RADSearch_ProductAd_01",
+  itemPrice: { min: 160, max: 160 },
+  itemListPrice: { min: 399, max: 399 },
+  itemImageUrl: "https://tshop.r10s.com/7a8/a.png?_ex=400x400",
+  itemStatus: "Available",
+  shopName: "POLYWELL 寶利威爾官方旗艦店",
+  review: { reviewScore: 5, reviewCount: 2 },
+  adFlag: true,
+};
+
+function viaIchannels(url: string): string {
+  return `https://product.mchannles.com/redirect_wa.php?k=2IsZi&uid1=bibisaru&tourl=${encodeURIComponent(url)}`;
+}
+
+describe("樂天", () => {
+  it("reads the embedded SearchPage JSON, drops s-id, and wraps the visitor link", () => {
+    const products = rakutenProducts(
+      rakutenPage([
+        rakutenItem,
+        {
+          ...rakutenItem,
+          itemName: "區間價耳機",
+          itemUrl: "https://www.rakuten.com.tw/shop/a/product/b/",
+          itemPrice: { min: 451, max: 506 },
+        },
+        { ...rakutenItem, itemName: "已下架耳機", itemStatus: "SoldOut" },
+        { ...rakutenItem, itemName: "網址不是樂天", itemUrl: "https://evil.example/x" },
+      ]),
+    );
+    expect(products?.map((product) => product.title)).toEqual(["POLYWELL 3.5mm耳塞式有線耳機麥克風", "區間價耳機"]);
+    expect(products?.[0]).toMatchObject({
+      platform: "rakuten",
+      price: 160,
+      image: "https://tshop.r10s.com/7a8/a.png?_ex=400x400",
+      url: viaIchannels("https://www.rakuten.com.tw/shop/polywell/product/f88b3l6sa/"),
+    });
+    expect(products?.[0]?.url).not.toContain("s-id");
+    expect(products?.[1]?.price).toBe(451);
+  });
+
+  it("returns null when the SearchPage JSON or its item list is missing", () => {
+    expect(rakutenProducts("<html></html>")).toBeNull();
+    expect(rakutenProducts(rakutenPage([]))).toEqual([]);
+    expect(
+      rakutenProducts('<script data-component-name="SearchPage">{not json</script>'),
+    ).toBeNull();
+    expect(
+      rakutenProducts('<script data-component-name="SearchPage">{"initialData":{}}</script>'),
+    ).toBeNull();
+  });
+});
+
+describe("露天", () => {
+  const search = {
+    TotalRows: 3,
+    Rows: [{ Id: "22324948234766", R18: 0 }, { Id: "22509824206099", R18: 0 }, { Id: "99", R18: 1 }, { Id: "bad" }],
+  };
+  const detail = [
+    {
+      ProdId: "22509824206099",
+      ProdName: "安全帽藍芽耳機",
+      PriceRange: [246, 789],
+      Image: "/g4/47f/e86/x/1/7d/13/22509824206099_994_m.jpg",
+      StockQty: 281,
+      SoldQty: 19,
+      ShippingCost: 60,
+      SaleType: "buy",
+    },
+    {
+      ProdId: "22324948234766",
+      ProdName: "Redmi Buds 8 Active",
+      PriceRange: [509, 509],
+      Image: "/g5/411/ab6/q/0/12/0e/22324948234766_459_m.jpg",
+      StockQty: 297,
+      SoldQty: 324,
+      ShippingCost: 60,
+      SaleType: "buy",
+    },
+    { ProdId: "1", ProdName: "沒庫存", PriceRange: [10, 10], Image: "", StockQty: 0, SaleType: "buy" },
+    { ProdId: "2", ProdName: "競標品", PriceRange: [10, 10], Image: "", StockQty: 1, SaleType: "bid" },
+  ];
+
+  it("keeps the search ids that are safe to look up", () => {
+    expect(rutenSearchIds(search)).toEqual(["22324948234766", "22509824206099"]);
+    expect(rutenSearchIds({ TotalRows: 0, Rows: [] })).toEqual([]);
+    expect(rutenSearchIds({})).toBeNull();
+  });
+
+  it("builds products in search order, with image host, item page, and no affiliate wrapping", () => {
+    const products = rutenProducts(detail, ["22324948234766", "22509824206099"]);
+    expect(products?.map((product) => product.title)).toEqual(["Redmi Buds 8 Active", "安全帽藍芽耳機"]);
+    expect(products?.[0]).toMatchObject({
+      platform: "ruten",
+      price: 509,
+      image: "https://gcs.rimg.com.tw/g5/411/ab6/q/0/12/0e/22324948234766_459_m.jpg",
+      url: "https://www.ruten.com.tw/item/22324948234766/",
+    });
+    expect(products?.[1]?.price).toBe(246);
+    expect(products?.every((product) => !product.url.includes("mchannles"))).toBe(true);
+    expect(rutenProducts({})).toBeNull();
   });
 });

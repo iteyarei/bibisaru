@@ -333,6 +333,116 @@ export function sanminProducts(html: string): Product[] | null {
   );
 }
 
+export function normalizeRakuten(html: string): Product[] {
+  return rakutenProducts(html) ?? [];
+}
+
+/** Product page without the `s-id` ad-tracking query. */
+function rakutenProductUrl(raw: unknown): string {
+  try {
+    const url = new URL(String(raw ?? ""));
+    url.searchParams.delete("s-id");
+    return url.toString();
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * 樂天 puts the whole result list in the JSON script of the SearchPage component.
+ * `null` when that JSON or its item list is missing, so the caller can treat it as a failure.
+ */
+export function readRakutenItems(html: string): unknown[] | null {
+  const at = html.indexOf('data-component-name="SearchPage"');
+  if (at < 0) return null;
+  const start = html.indexOf(">", at);
+  const end = start >= 0 ? html.indexOf("</script>", start) : -1;
+  if (start < 0 || end < 0) return null;
+  let data: unknown;
+  try {
+    data = JSON.parse(html.slice(start + 1, end));
+  } catch {
+    return null;
+  }
+  const result = asRecord(asRecord(asRecord(asRecord(data)?.initialData)?.searchPage)?.result);
+  return Array.isArray(result?.items) ? result.items : null;
+}
+
+export function rakutenProducts(html: string): Product[] | null {
+  const items = readRakutenItems(html);
+  if (!items) return null;
+  return collect(
+    "rakuten",
+    items.slice(0, 80).map((item) => {
+      const row = asRecord(item) ?? {};
+      const price = asRecord(row.itemPrice);
+      return {
+        title: String(row.itemName ?? ""),
+        price: parsePrice(price?.min) ?? parsePrice(price?.max),
+        image: String(row.itemImageUrl ?? ""),
+        url: rakutenProductUrl(row.itemUrl),
+        skip: row.itemStatus !== "Available" || row.isAdultProduct === true,
+      };
+    }),
+  );
+}
+
+/** Ids from the 露天 search API. Adult items (`R18`) are left out. */
+export function rutenSearchIds(data: unknown): string[] | null {
+  const rows = asRecord(data)?.Rows;
+  if (!Array.isArray(rows)) return null;
+  const ids: string[] = [];
+  for (const item of rows) {
+    const row = asRecord(item);
+    const id = String(row?.Id ?? "");
+    if (!row || !/^\d+$/.test(id) || row.R18 === 1 || row.R18 === true) continue;
+    ids.push(id);
+  }
+  return ids;
+}
+
+/** Image path from the API is relative to this host. */
+export const RUTEN_IMAGE_HOST = "https://gcs.rimg.com.tw";
+
+function rutenImage(path: unknown): string {
+  const value = String(path ?? "").trim();
+  if (!value) return "";
+  if (/^(https:)?\/\//.test(value)) return value;
+  return `${RUTEN_IMAGE_HOST}${value.startsWith("/") ? "" : "/"}${value}`;
+}
+
+export function rutenProductUrl(id: string): string {
+  return `https://www.ruten.com.tw/item/${encodeURIComponent(id)}/`;
+}
+
+/**
+ * 露天 detail rows. `null` when the payload is not a list.
+ * Only fixed-price items with stock count; auctions and sold out items are skipped.
+ * `ids` keeps the search order, because the detail API does not.
+ */
+export function rutenProducts(data: unknown, ids: readonly string[] = []): Product[] | null {
+  if (!Array.isArray(data)) return null;
+  const rows = data.map((item) => asRecord(item) ?? {});
+  if (ids.length) {
+    const order = new Map(ids.map((id, index) => [id, index]));
+    rows.sort((a, b) => (order.get(String(a.ProdId)) ?? 1e9) - (order.get(String(b.ProdId)) ?? 1e9));
+  }
+  return collect(
+    "ruten",
+    rows.slice(0, 80).map((row) => {
+      const id = String(row.ProdId ?? "");
+      const range = Array.isArray(row.PriceRange) ? row.PriceRange : [];
+      return {
+        title: String(row.ProdName ?? ""),
+        price: parsePrice(range[0]) ?? parsePrice(range[1]),
+        image: rutenImage(row.Image),
+        url: /^\d+$/.test(id) ? rutenProductUrl(id) : "",
+        skip: (row.SaleType !== undefined && row.SaleType !== "buy") || knownSoldOut(row.StockQty),
+      };
+    }),
+  );
+}
+
 export function normalizeShopee(data: unknown): Product[] {
   const items = asRecord(data)?.items;
   if (!Array.isArray(items)) return [];

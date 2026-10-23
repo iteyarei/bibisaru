@@ -1,4 +1,10 @@
-import { fetchCoupangDirect, fetchPxgoDirect, fetchShopeeDirect } from "../../../functions/lib/providers";
+import {
+  fetchCoupangDirect,
+  fetchPxgoDirect,
+  fetchRakutenDirect,
+  fetchRutenDirect,
+  fetchShopeeDirect,
+} from "../../../functions/lib/providers";
 import { normalizeQuery } from "../../../shared/query";
 import {
   isProxyPlatform,
@@ -36,6 +42,8 @@ function json(body: unknown, status: number): Response {
 export async function fetchShopDirect(platform: ProxyPlatform, query: string, env: ProxyEnv): Promise<PlatformResult> {
   if (platform === "pxgo") return fetchPxgoDirect(query);
   if (platform === "shopee") return fetchShopeeDirect(query);
+  if (platform === "rakuten") return fetchRakutenDirect(query);
+  if (platform === "ruten") return fetchRutenDirect(query);
   return fetchCoupangDirect(query, {
     accessKey: env.COUPANG_ACCESS_KEY ?? "",
     secretKey: env.COUPANG_SECRET_KEY ?? "",

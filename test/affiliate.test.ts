@@ -1,16 +1,18 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
-  AFFILIATE_ENABLED,
   applyAffiliate,
   COUPANG_AFFILIATE_ID,
   coupangAffiliateId,
   coupangAffiliateUrl,
   coupangSearchAffiliateUrl,
+  ICHANNELS_K,
+  ichannelsAffiliateUrl,
+  ichannelsK,
   SHOPEE_AFFILIATE_ID,
   shopeeAffiliateId,
   shopeeAffiliateUrl,
 } from "../shared/affiliate";
-import { platformSearchUrl, rawSearchUrl } from "../shared/platforms";
+import { PLATFORM_IDS, platformSearchUrl, rawSearchUrl } from "../shared/platforms";
 import { normalizeCoupang } from "../shared/normalize";
 
 function envBag(): Record<string, string | undefined> {
@@ -21,8 +23,11 @@ function envBag(): Record<string, string | undefined> {
 
 const originalShopee = envBag().SHOPEE_AFFILIATE_ID;
 const originalCoupang = envBag().COUPANG_AFFILIATE_ID;
+const originalIchannels = envBag().ICHANNELS_K;
 
 afterEach(() => {
+  if (originalIchannels === undefined) delete envBag().ICHANNELS_K;
+  else envBag().ICHANNELS_K = originalIchannels;
   if (originalShopee === undefined) delete envBag().SHOPEE_AFFILIATE_ID;
   else envBag().SHOPEE_AFFILIATE_ID = originalShopee;
   if (originalCoupang === undefined) delete envBag().COUPANG_AFFILIATE_ID;
@@ -31,7 +36,6 @@ afterEach(() => {
 
 describe("shopee affiliate redirect", () => {
   it("wraps a product url and leaves other shops alone", () => {
-    expect(AFFILIATE_ENABLED).toBe(false);
     const product = "https://shopee.tw/-i.7.42";
     const wrapped = applyAffiliate(product);
     const url = new URL(wrapped);
@@ -49,7 +53,7 @@ describe("shopee affiliate redirect", () => {
     expect(origin).toBe(`https://shopee.tw/search?keyword=${encodeURIComponent("耳機")}`);
     expect(raw).toContain(encodeURIComponent(encodeURIComponent("耳機")));
     expect(url.searchParams.get("affiliate_id")).toBe("16330620037");
-    expect(platformSearchUrl("momo", "耳機")).toBe(`https://www.momoshop.com.tw/search/${encodeURIComponent("耳機")}`);
+    expect(platformSearchUrl("pchome", "耳機")).toBe(rawSearchUrl("pchome", "耳機"));
   });
 
   it("reads SHOPEE_AFFILIATE_ID from the environment", () => {
@@ -80,12 +84,11 @@ describe("coupang affiliate redirect", () => {
   });
 
   it("wraps the 前往搜尋 link and leaves the fetch url as the original query", () => {
-    expect(AFFILIATE_ENABLED).toBe(false);
     const raw = rawSearchUrl("coupang", "電鍋");
     expect(raw).toBe(`https://www.tw.coupang.com/np/search?q=${encodeURIComponent("電鍋")}`);
     expect(platformSearchUrl("coupang", "電鍋")).toBe(coupangSearchAffiliateUrl("電鍋"));
     expect(applyAffiliate(raw)).toBe(coupangSearchAffiliateUrl("電鍋"));
-    expect(platformSearchUrl("momo", "電鍋")).toBe(`https://www.momoshop.com.tw/search/${encodeURIComponent("電鍋")}`);
+    expect(platformSearchUrl("pchome", "電鍋")).toBe(rawSearchUrl("pchome", "電鍋"));
   });
 
   it("wraps a scraped product link and keeps item ids", () => {
@@ -130,5 +133,85 @@ describe("coupang affiliate redirect", () => {
     const once = coupangSearchAffiliateUrl("電鍋");
     expect(coupangAffiliateUrl(once)).toBe(once);
     expect(applyAffiliate(once)).toBe(once);
+  });
+});
+
+function ichannels(url: string): string {
+  return `https://product.mchannles.com/redirect_wa.php?k=2IsZi&uid1=bibisaru&tourl=${encodeURIComponent(url)}`;
+}
+
+describe("通路王 Deep Link", () => {
+  const cases: Array<[string, string]> = [
+    ["momo", "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=14040053&Area=search"],
+    ["Yahoo 奇摩購物中心", "https://tw.buy.yahoo.com/gdsale/airpods-11986319.html"],
+    ["金石堂", "https://www.kingstone.com.tw/basic/3030000102785/"],
+    ["樂天", "https://www.rakuten.com.tw/shop/polywell/product/f88b3l6sa/"],
+  ];
+
+  it.each(cases)("wraps %s and encodes tourl", (_name, url) => {
+    const wrapped = applyAffiliate(url);
+    expect(wrapped).toBe(ichannels(url));
+    const parsed = new URL(wrapped);
+    expect(parsed.origin + parsed.pathname).toBe("https://product.mchannles.com/redirect_wa.php");
+    expect(parsed.searchParams.get("k")).toBe(ICHANNELS_K);
+    expect(parsed.searchParams.get("uid1")).toBe("bibisaru");
+    expect(parsed.searchParams.get("tourl")).toBe(url);
+  });
+
+  it("also covers subdomains and Chinese search keywords", () => {
+    const mobile = "https://m.momoshop.com.tw/search.momo?searchKeyword=%E8%80%B3%E6%A9%9F";
+    expect(applyAffiliate(mobile)).toBe(ichannels(mobile));
+    const search = `https://www.kingstone.com.tw/search/key/${encodeURIComponent("東野圭吾")}`;
+    expect(new URL(applyAffiliate(search)).searchParams.get("tourl")).toBe(search);
+    expect(applyAffiliate(search)).toContain(encodeURIComponent(encodeURIComponent("東野圭吾")));
+  });
+
+  it("does not wrap twice", () => {
+    const once = ichannels("https://www.rakuten.com.tw/search/%E8%80%B3%E6%A9%9F/");
+    expect(applyAffiliate(once)).toBe(once);
+    expect(ichannelsAffiliateUrl(once)).toBe(once);
+  });
+
+  it("leaves other shops, http links, look-alike hosts, and bad urls alone", () => {
+    for (const url of [
+      "https://24h.pchome.com.tw/prod/ABC",
+      "https://pxbox.es.pxmart.com.tw/product/1",
+      "https://www.sanmin.com.tw/product/index/004113511",
+      "https://www.etmall.com.tw/i/7926508",
+      "https://www.ruten.com.tw/item/22324948234766/",
+      "http://www.momoshop.com.tw/goods/1",
+      "https://evilmomoshop.com.tw/goods/1",
+      "https://www.momoshop.com.tw.evil.example/goods/1",
+      "not a url",
+    ]) {
+      expect(applyAffiliate(url)).toBe(url);
+    }
+  });
+
+  it("keeps Shopee and Coupang on their own programs", () => {
+    expect(applyAffiliate("https://shopee.tw/-i.7.42")).toBe(shopeeAffiliateUrl("https://shopee.tw/-i.7.42"));
+    expect(applyAffiliate("https://shopee.tw/-i.7.42")).not.toContain("mchannles");
+    expect(applyAffiliate(rawSearchUrl("coupang", "電鍋"))).toBe(coupangSearchAffiliateUrl("電鍋"));
+  });
+
+  it("wraps visitor search links only for the four shops", () => {
+    for (const id of ["momo", "yahoo", "kingstone", "rakuten"] as const) {
+      expect(platformSearchUrl(id, "耳機"), id).toBe(ichannels(rawSearchUrl(id, "耳機")));
+    }
+    for (const id of ["pchome", "pxgo", "etmall", "sanmin", "ruten"] as const) {
+      expect(platformSearchUrl(id, "耳機"), id).toBe(rawSearchUrl(id, "耳機"));
+    }
+  });
+
+  it("never puts the affiliate redirect into the url the server fetches", () => {
+    for (const id of PLATFORM_IDS) expect(rawSearchUrl(id, "耳機"), id).not.toContain("mchannles");
+  });
+
+  it("reads ICHANNELS_K from the environment", () => {
+    envBag().ICHANNELS_K = "TESTK";
+    expect(ichannelsK()).toBe("TESTK");
+    expect(new URL(applyAffiliate("https://www.momoshop.com.tw/goods/1")).searchParams.get("k")).toBe("TESTK");
+    envBag().ICHANNELS_K = "  ";
+    expect(ichannelsK()).toBe(ICHANNELS_K);
   });
 });

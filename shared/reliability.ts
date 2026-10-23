@@ -33,6 +33,8 @@ export const RETRIED_PLATFORMS: readonly PlatformId[] = [
   "etmall",
   "kingstone",
   "sanmin",
+  "rakuten",
+  "ruten",
 ];
 
 export function timeoutFor(id: PlatformId): number {

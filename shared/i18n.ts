@@ -9,7 +9,7 @@ export const zhTW = {
   documentTitle: "比比猴 — 台灣購物比價",
   searchTitle: "{q} — 比比猴",
   metaDescription:
-    "一次搜尋 momo、PChome、Yahoo 奇摩、全聯、東森、金石堂、三民等購物網站，把價格由低到高排好。沒有廣告、沒有置頂。",
+    "一次搜尋 momo、PChome、Yahoo 奇摩、全聯、東森、金石堂、三民、樂天、露天等購物網站，把價格由低到高排好。沒有廣告、沒有置頂。",
   searchLabel: "關鍵字",
   searchPlaceholder: "想找什麼？例如：藍芽耳機",
   searchHint: "多個關鍵字可用空格分開，全部符合的商品才會顯示",
@@ -43,7 +43,7 @@ export const zhTW = {
   empty: "找不到符合的商品，試試放寬價格、少一個排除字，或打開更多平台",
   reset: "重設篩選",
   introTitle: "輸入關鍵字，一次比較各家價格",
-  introBody: "momo、PChome、Yahoo 奇摩、酷澎、蝦皮、全聯、東森、金石堂、三民。沒有廣告。",
+  introBody: "momo、PChome、Yahoo 奇摩、酷澎、蝦皮、全聯、東森、金石堂、三民、樂天、露天。沒有廣告。",
   unavailable: "{name}商品暫時無法陳列",
   unavailableReason: "原因：{reason} · {colo}",
   unavailableReasonOnly: "原因：{reason}",
@@ -59,7 +59,7 @@ export const zhTW = {
   loading: "搜尋中",
   footer: "價格與庫存以各購物平台頁面為準。比比猴不販售商品，也沒有置頂廣告。",
   footnoteLimit: "比的是各平台搜尋結果的前幾筆，不是該站全部商品。",
-  affiliateNote: "部分連結為分潤連結（含蝦皮、酷澎），不影響您的購買價格。",
+  affiliateNote: "部分連結為聯盟行銷分潤連結（含蝦皮、酷澎、momo、Yahoo 奇摩、金石堂、樂天），不影響您的購買價格。",
   openProduct: "{lowest}在{name}開啟「{title}」，{price}",
   noscript: "比比猴需要 JavaScript 才能搜尋比價。",
 } as const;
