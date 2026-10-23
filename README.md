@@ -2,7 +2,7 @@
 
 台灣購物比價網站。輸入一個關鍵字，把 momo、PChome、酷澎、Yahoo 奇摩購物中心、蝦皮的搜尋結果放在一起，預設依價格由低到高排列。
 
-這一版沒有廣告、沒有聯盟追蹤碼。站名英文 slug 是 `bibisaru`。
+這一版沒有廣告。部分外出連結帶聯盟分潤參數，頁尾有揭露。站名英文 slug 是 `bibisaru`。
 
 ## 本地開發
 
@@ -89,15 +89,15 @@ npx wrangler secret put COUPANG_SECRET_KEY --config workers/fetch-proxy/wrangler
 
 ## 搜尋怎麼運作
 
-`GET /api/search?q=耳機&platforms=momo,pchome,yahoo,coupang,shopee,pxgo,etmall,kingstone,sanmin`
+`GET /api/search?q=耳機&platforms=momo,pchome,yahoo,coupang,shopee,pxgo,etmall,kingstone,sanmin,rakuten,ruten`
 
 每家最多回 24 筆，欄位是 `{ platform, title, price, image, url }`。某一家失敗不會讓其他家一起失敗。失敗的那一家在畫面上顯示「暫時無法取得」，底下用淺灰色小字寫原因和 Cloudflare 機房（例如「原因：http_403 · HKG · fetchColo IAD」），並給一顆按鈕打開該平台自己的搜尋頁。`meta.colo` 是訪客進來的機房。`meta.fetchColo` 是這次函式實際打出去的機房，來自 `https://www.cloudflare.com/cdn-cgi/trace` 的 `colo`，不含 IP。全聯從 HKG 會被 403，從 IAD 可以；Smart Placement 不會因此改走 IAD。有設定美國 Worker 時，全聯、酷澎、蝦皮改由那個 Worker 抓，卡片上的 `fetchColo` 是 Worker 回報的機房。
 
-同一組關鍵字與平台組合，全部抓到時會在邊緣快取約 3 分鐘，瀏覽器再快取 30 秒。快取鍵帶這次部署的版本，新版本不會沿用舊結果。若 momo、PChome、Yahoo、全聯、東森、金石堂、三民有一家失敗，這次回應是 `no-store`，不會被快取。酷澎、蝦皮常常只有前往搜尋，不算這次失敗。每個抓取的店（酷澎除外）失敗或逾時會再要一次：全聯隔約 0.8 秒、單次逾時 10 秒，其他店隔約 0.3 秒、單次逾時 8 秒。各店平行抓，最慢的一條仍低於 Pages 約 30 秒。每個 IP 大約每分鐘 20 次未命中快取的搜尋。
+同一組關鍵字與平台組合，全部抓到時會在邊緣快取約 3 分鐘，瀏覽器再快取 30 秒。快取鍵帶這次部署的版本，新版本不會沿用舊結果。若 momo、PChome、Yahoo、全聯、東森、金石堂、三民、樂天、露天有一家失敗，這次回應是 `no-store`，不會被快取。酷澎、蝦皮常常只有前往搜尋，不算這次失敗。每個抓取的店（酷澎除外）失敗或逾時會再要一次：全聯隔約 0.8 秒、單次逾時 10 秒，其他店隔約 0.3 秒、單次逾時 8 秒。各店平行抓，最慢的一條仍低於 Pages 約 30 秒。每個 IP 大約每分鐘 20 次未命中快取的搜尋。
 
 搜尋框和排除關鍵字框在有字時，文字右側會出現清除鈕，只清空該欄並把游標放回去，不會重新搜尋。結果卡底部的「搜尋同款」會把商品名收成品牌加型號（或前幾個詞）再搜全部平台。排除關鍵字、平台開關、排序、價格範圍都在瀏覽器裡做，並記在 `localStorage`（`bibisaru.prefs.v1`）。價格範圍空白表示不限；若最低填得比最高高，會把兩個數字對調後再篩。搜尋欄用空格分開的每個詞都要出現在商品名稱裡（忽略大小寫、全形半形，也忽略空格和符號，所以 fold8 對得上 Fold 8）。超過兩個字、中間沒有空格的中文詞，若整段對不上，會再用品牌和品類詞拆開（大同、電鍋這類；沒有收錄的部分用斷詞，再不行就兩字一組），片段都要出現、順序不限。整段連在一起的結果，在相關排序裡排在拆開比對的前面。同義詞在 `shared/synonyms.ts`，例如 NS2 與 Switch 2、PS5 與 PlayStation 5。各平台仍用整句去搜，過濾在瀏覽器做。PChome 的商品名稱若少了品牌、說明第一行只是多出短短的品牌前綴，會用那一行當名稱。外連是 `target="_blank"`、`rel="noopener nofollow sponsored"`。
 
-能判斷庫存的店，已售完的商品預設不列出：momo（`goodsStock` 為 0）、Yahoo（`ec_has_stock` 為 0 或庫存數為 0）、全聯（`is_sold_out` 或庫存為 0）、東森（`haveStocks` 為 false）、金石堂（按鈕是「貨到通知」）、三民（標成「無庫存」）。PChome 的搜尋 JSON 沒有庫存欄位，無法判斷，所以照頁面上的結果列出。酷澎、蝦皮目前多半是前往搜尋，沒有可判斷的庫存。
+能判斷庫存的店，已售完的商品預設不列出：momo（`goodsStock` 為 0）、Yahoo（`ec_has_stock` 為 0 或庫存數為 0）、全聯（`is_sold_out` 或庫存為 0）、東森（`haveStocks` 為 false）、金石堂（按鈕是「貨到通知」）、三民（標成「無庫存」）、樂天（只列 `itemStatus` 為 `Available`）、露天（`StockQty` 為 0 或不是直購）。PChome 的搜尋 JSON 沒有庫存欄位，無法判斷，所以照頁面上的結果列出。酷澎、蝦皮目前多半是前往搜尋，沒有可判斷的庫存。
 
 ## 這台機器實測（2026-10-12）
 
@@ -116,6 +116,8 @@ npx wrangler secret put COUPANG_SECRET_KEY --config workers/fetch-proxy/wrangler
 | 東森 | 有抓到商品（48 筆，頁面只用前 24） | `etmall.com.tw/Search/Get` JSON，用成交價 `finalPrice` |
 | 金石堂 | 有抓到商品（48 筆，頁面只用前 24） | 讀搜尋頁 HTML 的商品卡 |
 | 三民 | 有抓到商品 | 讀搜尋頁 HTML。有優惠價就用優惠價，否則用定價 |
+| 樂天 | 有抓到商品（約 24 筆，去重後上限 24） | 讀搜尋頁內嵌的 SearchPage JSON（`initialData.searchPage.result.items`），只留 `itemStatus` 為 `Available`，價格取 `itemPrice.min`，商品網址去掉 `?s-id=`。廣告商品照常列出。走 `FETCH_PROXY_URL`，Worker 不通時退回直連 |
+| 露天 | 有抓到商品（最多 24 筆） | 兩段 API：先 `rtapi.ruten.com.tw/api/search/v3/.../core/prod` 取商品編號，再 `/api/prod/v2/.../prod?id=` 取名稱、價格、庫存。圖片網址是 `https://gcs.rimg.com.tw` 加 `Image`，商品頁是 `https://www.ruten.com.tw/item/<編號>/`。庫存為 0 與非直購商品不列出。走 `FETCH_PROXY_URL`，Worker 不通時退回直連 |
 
 沒有接上的店，以及原因：
 
@@ -132,7 +134,7 @@ npx wrangler secret put COUPANG_SECRET_KEY --config workers/fetch-proxy/wrangler
 
 ## 風險
 
-- 這些平台的使用條款多半不允許自動抓搜尋結果。這一版量很小、有快取。蝦皮與酷澎的外出連結走官方分潤轉址，其他店沒有聯盟參數。仍可能違反對方條款，也可能隨時被擋。
+- 這些平台的使用條款多半不允許自動抓搜尋結果。這一版量很小、有快取。蝦皮與酷澎的外出連結走官方分潤轉址，momo、Yahoo 奇摩、金石堂、樂天走通路王 Deep Link，其他店（PChome、全聯、三民、東森、露天）沒有聯盟參數。仍可能違反對方條款，也可能隨時被擋。
 - momo、Yahoo 是解析網頁，版面一改就會變成「暫時無法取得」。PChome 與酷澎走 JSON。酷澎用 Partners Open API，金鑰放在 Pages secrets，不會寫進紀錄。PChome 沒有正式對外匯的保證。
 - 比的是每一家搜尋結果的前一頁，不是該站全部商品。最低價指的是這一批裡面最便宜的。
 - 有些平台會把推薦商品混進搜尋結果，標價仍是該頁上的價格。
@@ -149,7 +151,9 @@ npx wrangler secret put COUPANG_SECRET_KEY --config workers/fetch-proxy/wrangler
 
 介面文字集中在 `shared/i18n.ts`，目前只有繁體中文。
 
-聯盟參數只准加在 `shared/affiliate.ts` 的 `applyAffiliate`。`AFFILIATE_ENABLED` 必須維持 `false`，除了蝦皮和酷澎以外的外出網址不會被改寫。蝦皮商品與「前往搜尋」連結會改成 `https://s.shopee.tw/an_redir`，`affiliate_id` 預設 `16330620037`，可用環境變數 `SHOPEE_AFFILIATE_ID` 覆寫，`sub_id` 是 `bibisaru`。酷澎的「前往搜尋」改成 `https://link.tw.coupang.com/re2/AFFKOLSRP`，`lptag` 預設 `AF6766993`，可用環境變數 `COUPANG_AFFILIATE_ID` 覆寫，`pageKey` 是原本的關鍵字，不加 `traceid`。商品清單改打 Partners Open API（`COUPANG_ACCESS_KEY`、`COUPANG_SECRET_KEY`，Pages secrets）。API 回的 `productUrl` 已是分潤連結，原樣使用。金鑰缺或 API 失敗時不抓 HTML，改顯示「暫時無法取得」和上面的分潤搜尋連結。單元測試會鎖住這個開關。
+聯盟參數只准加在 `shared/affiliate.ts` 的 `applyAffiliate`。除了蝦皮、酷澎與通路王的四家店以外，外出網址不會被改寫。蝦皮商品與「前往搜尋」連結會改成 `https://s.shopee.tw/an_redir`，`affiliate_id` 預設 `16330620037`，可用環境變數 `SHOPEE_AFFILIATE_ID` 覆寫，`sub_id` 是 `bibisaru`。酷澎的「前往搜尋」改成 `https://link.tw.coupang.com/re2/AFFKOLSRP`，`lptag` 預設 `AF6766993`，可用環境變數 `COUPANG_AFFILIATE_ID` 覆寫，`pageKey` 是原本的關鍵字，不加 `traceid`。商品清單改打 Partners Open API（`COUPANG_ACCESS_KEY`、`COUPANG_SECRET_KEY`，Pages secrets）。API 回的 `productUrl` 已是分潤連結，原樣使用。金鑰缺或 API 失敗時不抓 HTML，改顯示「暫時無法取得」和上面的分潤搜尋連結。
+
+通路王 Deep Link：momo、Yahoo 奇摩購物中心（`tw.buy.yahoo.com`）、金石堂、樂天的商品連結與「前往搜尋」、「搜尋同款」等訪客點擊的外出連結，會改成 `https://product.mchannles.com/redirect_wa.php?k=<K>&uid1=bibisaru&tourl=<原網址 encodeURIComponent>`。網域比對含子網域，已經是 `product.mchannles.com` 的連結不會再包一次。`K`（活動編號 `2IsZi`，不是密鑰）預設寫在 `shared/affiliate.ts`，可用環境變數 `ICHANNELS_K` 覆寫。伺服器抓資料用的 `rawSearchUrl` 與原始商品網址永遠不包轉址。單元測試會鎖住這些規則。
 
 Coupang Open API enabled
 

@@ -30,7 +30,7 @@ describe("live platform adapters", () => {
       expect(product.platform).toBeTruthy();
     }
 
-    for (const id of ["momo", "pchome", "yahoo", "pxgo", "etmall", "kingstone", "sanmin"] as const) {
+    for (const id of ["momo", "pchome", "yahoo", "pxgo", "etmall", "kingstone", "sanmin", "rakuten", "ruten"] as const) {
       const platform = response.platforms.find((item) => item.id === id);
       expect(platform?.status, id).toBe("ok");
       expect(platform?.count, id).toBeGreaterThan(0);

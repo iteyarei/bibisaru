@@ -1,9 +1,10 @@
 /**
  * Outbound affiliate wrapping lives here.
- * Shopee and Coupang links are rewritten. Keep `AFFILIATE_ENABLED` false so
- * every other shop stays unchanged.
+ * Shopee and Coupang links are rewritten with their own programs.
+ * momo, Yahoo 奇摩購物中心, 金石堂 and 樂天 go through the 通路王 Deep Link.
+ * Every other shop stays unchanged.
+ * Only links the visitor clicks are wrapped. Server fetches use `rawSearchUrl`.
  */
-export const AFFILIATE_ENABLED = false;
 
 /** Default Shopee affiliate id. Override with the SHOPEE_AFFILIATE_ID environment variable. */
 export const SHOPEE_AFFILIATE_ID = "16330620037";
@@ -13,12 +14,36 @@ export const SHOPEE_SUB_ID = "bibisaru";
 /** Default Coupang Partners id. Override with the COUPANG_AFFILIATE_ID environment variable. */
 export const COUPANG_AFFILIATE_ID = "AF6766993";
 
+/**
+ * 通路王 Deep Link. The k value is a public campaign number, not a secret.
+ * Override it with the ICHANNELS_K environment variable.
+ */
+export const ICHANNELS_K = "2IsZi";
+
+/** Performance tag shown in the 通路王 dashboard. */
+export const ICHANNELS_UID1 = "bibisaru";
+
+const ICHANNELS_REDIRECT_HOST = "product.mchannles.com";
+const ICHANNELS_REDIRECT_PATH = "/redirect_wa.php";
+
 const SHOPEE_HOST = /(^|\.)shopee\.tw$/i;
 const COUPANG_HOST = /(^|\.)coupang\.com$/i;
+
+/** Shops that 通路王 pays for: momo, Yahoo 奇摩購物中心, 金石堂, 樂天. */
+const ICHANNELS_HOSTS: readonly RegExp[] = [
+  /(^|\.)momoshop\.com\.tw$/i,
+  /(^|\.)tw\.buy\.yahoo\.com$/i,
+  /(^|\.)kingstone\.com\.tw$/i,
+  /(^|\.)rakuten\.com\.tw$/i,
+];
 
 function envValue(name: string): string | undefined {
   const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
   return env?.[name]?.trim() || undefined;
+}
+
+export function ichannelsK(): string {
+  return envValue("ICHANNELS_K") || ICHANNELS_K;
 }
 
 export function shopeeAffiliateId(): string {
@@ -102,11 +127,28 @@ export function coupangAffiliateUrl(url: string, affiliateId = coupangAffiliateI
   return coupangProductAffiliateUrl(parsed, id) ?? url;
 }
 
+/**
+ * 通路王 Deep Link for momo, Yahoo 奇摩購物中心, 金石堂 and 樂天.
+ * Other hosts, http links, and links that already go through product.mchannles.com pass through.
+ */
+export function ichannelsAffiliateUrl(url: string, k = ichannelsK()): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return url;
+  }
+  if (parsed.protocol !== "https:") return url;
+  if (parsed.hostname === ICHANNELS_REDIRECT_HOST && parsed.pathname === ICHANNELS_REDIRECT_PATH) return url;
+  if (!ICHANNELS_HOSTS.some((host) => host.test(parsed.hostname))) return url;
+  const key = k.trim() || ICHANNELS_K;
+  return `https://${ICHANNELS_REDIRECT_HOST}${ICHANNELS_REDIRECT_PATH}?k=${encodeURIComponent(key)}&uid1=${encodeURIComponent(ICHANNELS_UID1)}&tourl=${encodeURIComponent(url)}`;
+}
+
 export function applyAffiliate(url: string): string {
   const shopee = shopeeAffiliateUrl(url);
   if (shopee !== url) return shopee;
   const coupang = coupangAffiliateUrl(url);
   if (coupang !== url) return coupang;
-  if (!AFFILIATE_ENABLED) return url;
-  return url;
+  return ichannelsAffiliateUrl(url);
 }
