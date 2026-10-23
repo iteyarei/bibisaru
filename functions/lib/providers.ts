@@ -242,7 +242,13 @@ export const fetchRakutenDirect: PlatformFetcher = (query) =>
   scrape("rakuten", query, async (fresh) => {
     const response = await request(
       rawSearchUrl("rakuten", query),
-      { ...DOCUMENT_HEADERS, referer: "https://www.rakuten.com.tw/", "sec-fetch-site": "same-origin" },
+      {
+        ...DOCUMENT_HEADERS,
+        // 樂天沒帶 accept-encoding 會直接斷線（Cloudflare 回 520），要明確帶上
+        "accept-encoding": "gzip, deflate, br",
+        referer: "https://www.rakuten.com.tw/",
+        "sec-fetch-site": "same-origin",
+      },
       { fresh },
     );
     if (!response.ok) return httpFailure("rakuten", query, response.status);
