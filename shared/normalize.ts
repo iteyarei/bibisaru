@@ -408,8 +408,8 @@ export function rutenSearchIds(data: unknown): string[] | null {
 export const RUTEN_IMAGE_HOST = "https://gcs.rimg.com.tw";
 export const RUTEN_IMAGE_HOST_C = "https://b.rimg.com.tw";
 
-function rutenImage(path: unknown): string {
-  const value = String(path ?? "").trim();
+function rutenImage(raw: unknown): string {
+  const value = String(raw ?? "").trim();
   if (!value) return "";
   if (/^(https:)?\/\//.test(value)) return value;
   const path = value.startsWith("/") ? value : `/${value}`;
