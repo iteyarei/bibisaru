@@ -401,14 +401,20 @@ export function rutenSearchIds(data: unknown): string[] | null {
   return ids;
 }
 
-/** Image path from the API is relative to this host. */
+/**
+ * Image path from the API is relative to a host chosen by its first folder.
+ * 實測：/g… 在 gcs.rimg.com.tw 有圖；/c… 在 gcs 只會回「無圖」預設圖，要用 b.rimg.com.tw。
+ */
 export const RUTEN_IMAGE_HOST = "https://gcs.rimg.com.tw";
+export const RUTEN_IMAGE_HOST_C = "https://b.rimg.com.tw";
 
 function rutenImage(path: unknown): string {
   const value = String(path ?? "").trim();
   if (!value) return "";
   if (/^(https:)?\/\//.test(value)) return value;
-  return `${RUTEN_IMAGE_HOST}${value.startsWith("/") ? "" : "/"}${value}`;
+  const path = value.startsWith("/") ? value : `/${value}`;
+  const host = path.startsWith("/c") ? RUTEN_IMAGE_HOST_C : RUTEN_IMAGE_HOST;
+  return `${host}${path}`;
 }
 
 export function rutenProductUrl(id: string): string {
