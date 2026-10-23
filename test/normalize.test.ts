@@ -493,6 +493,16 @@ describe("露天", () => {
     expect(rutenSearchIds({})).toBeNull();
   });
 
+  it("uses b.rimg.com.tw for /c… image folders and gcs.rimg.com.tw for /g… ones", () => {
+    const rows = [
+      { ProdId: "1", ProdName: "甲", PriceRange: [10], Image: "/c1/0ed/1c4/x/3/cc/1_109_m.jpg", SaleType: "buy", StockQty: 3 },
+      { ProdId: "2", ProdName: "乙", PriceRange: [20], Image: "/g4/59d/ccc/y/4/01/7a/2_707_m.jpg", SaleType: "buy", StockQty: 3 },
+    ];
+    const products = rutenProducts(rows, ["1", "2"]);
+    expect(products?.[0]?.image).toBe("https://b.rimg.com.tw/c1/0ed/1c4/x/3/cc/1_109_m.jpg");
+    expect(products?.[1]?.image).toBe("https://gcs.rimg.com.tw/g4/59d/ccc/y/4/01/7a/2_707_m.jpg");
+  });
+
   it("builds products in search order, with image host, item page, and no affiliate wrapping", () => {
     const products = rutenProducts(detail, ["22324948234766", "22509824206099"]);
     expect(products?.map((product) => product.title)).toEqual(["Redmi Buds 8 Active", "安全帽藍芽耳機"]);
