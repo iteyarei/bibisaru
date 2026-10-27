@@ -29,3 +29,16 @@ describe("hot keywords", () => {
     for (const item of HOT_KEYWORDS) expect(xml).toContain(`https://bibisaru.pages.dev${hotKeywordPath(item.keyword)}`);
   });
 });
+
+import indexHtml from "../index.html?raw";
+describe("hot keywords popover markup", () => {
+  const html = indexHtml;
+  it("panel sits inside the search form with flame title, old section removed", () => {
+    const form = html.slice(html.indexOf('<form id="search-form"'), html.indexOf("</form>", html.indexOf('<form id="search-form"')));
+    expect(form).toContain('id="hot-pop"');
+    expect(form).toContain('id="hot-groups"');
+    expect(form).toMatch(/🔥<\/span> 熱門搜尋商品 <span aria-hidden="true">🔥/);
+    expect(html).not.toContain("最近大家在找");
+    expect(html).toMatch(/id="q"[^>]*aria-expanded="false"/);
+  });
+});
