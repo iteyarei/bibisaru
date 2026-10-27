@@ -12,6 +12,7 @@ import { normalizeQuery } from "../shared/query";
 import { similarQuery } from "../shared/similar";
 import { applySplurgeName, pickSplurgeName, SPLURGE_ROLL_MS } from "../shared/splurge";
 import type { PlatformId, SearchResponse, SortMode } from "../shared/types";
+import { groupHotKeywords, HOT_KEYWORDS, hotKeywordPath } from "../shared/hot-keywords";
 import { bindClearButton } from "./clear-field";
 import { defaultPrefs, loadPrefs, savePrefs, type Prefs } from "./prefs";
 import { renderNotices, renderStage } from "./render";
@@ -383,6 +384,40 @@ window.addEventListener("popstate", () => {
   render();
 });
 
+function renderHotKeywords(): void {
+  const root = document.querySelector<HTMLElement>("#hot-groups");
+  if (!root) return;
+  root.replaceChildren(
+    ...groupHotKeywords(HOT_KEYWORDS).map((group) => {
+      const wrap = document.createElement("div");
+      wrap.className = "hot-group";
+      const head = document.createElement("h3");
+      head.textContent = group.category;
+      const list = document.createElement("div");
+      list.className = "hot-list";
+      for (const item of group.items) {
+        const link = document.createElement("a");
+        link.className = "hot-chip";
+        link.href = hotKeywordPath(item.keyword);
+        link.textContent = item.keyword;
+        link.title = item.reason;
+        link.addEventListener("click", (event) => {
+          if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+          event.preventDefault();
+          searchInput.value = item.keyword;
+          syncSearchClear();
+          window.scrollTo(0, 0);
+          void runSearch(item.keyword, true);
+        });
+        list.append(link);
+      }
+      wrap.append(head, list);
+      return wrap;
+    }),
+  );
+}
+
+renderHotKeywords();
 renderPlatforms();
 syncExclude();
 sortSelect.value = prefs.sort;
