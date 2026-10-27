@@ -12,7 +12,7 @@ import {
   sanminProducts,
   yahooProducts,
 } from "../../shared/normalize";
-import { fetchProxiedShop, readProxyConfig } from "../../shared/proxy";
+import { callFetchProxy, fetchProxiedShop, readProxyConfig } from "../../shared/proxy";
 import { pxgoAttempt } from "../../shared/pxgo";
 import { MAX_PER_PLATFORM, platformSearchUrl, rawSearchUrl } from "../../shared/platforms";
 import {
@@ -39,8 +39,9 @@ const MAX_BYTES = 2_000_000;
 
 function withEdgeCache(init: RequestInit): RequestInit {
   if (typeof caches === "undefined") return init;
-  const cached = init as RequestInit & { cf?: { cacheTtl: number; cacheEverything: boolean } };
-  cached.cf = { cacheTtl: 180, cacheEverything: true };
+  const cached = init as RequestInit & { cf?: { cacheTtlByStatus: Record<string, number>; cacheEverything: boolean } };
+  // 只快取 2xx；403/5xx 等失敗回應不寫入快取，避免一次被擋就卡 3 分鐘
+  cached.cf = { cacheTtlByStatus: { "200-299": 180, "300-599": 0 }, cacheEverything: true };
   return cached;
 }
 
@@ -129,7 +130,8 @@ const fetchPchome: PlatformFetcher = (query) =>
     return ok("pchome", query, products);
   });
 
-const fetchYahoo: PlatformFetcher = (query) =>
+/** 奇摩直抓。失敗原因帶上 HTTP 狀態碼，解析不到商品時也記下狀態碼與是否像驗證頁。 */
+export const fetchYahooDirect: PlatformFetcher = (query) =>
   scrape("yahoo", query, async (fresh) => {
     const response = await request(
       rawSearchUrl("yahoo", query),
@@ -138,9 +140,34 @@ const fetchYahoo: PlatformFetcher = (query) =>
     );
     if (!response.ok) return httpFailure("yahoo", query, response.status);
     const products = yahooProducts(response.text);
-    if (!products) return parseFailure("yahoo", query);
+    if (!products || products.length === 0) {
+      const hint = looksLikeChallenge(response.text) ? " challenge" : "";
+      return unavailableResult("yahoo", query, `parse_error http_${response.status}${hint}`);
+    }
     return ok("yahoo", query, products);
   });
+
+export function looksLikeChallenge(html: string): boolean {
+  return /captcha|challenge|verify you are|are you a robot|access denied|請稍後再試|異常流量/i.test(html.slice(0, 200_000));
+}
+
+/** 奇摩先直抓；失敗（非 200 或 0 筆）再改走美國代理 Worker。代理也失敗就回報兩邊原因。 */
+export async function fetchYahooWithFallback(
+  query: string,
+  direct: PlatformFetcher = fetchYahooDirect,
+  config: { url: string; token: string } | null = readProxyConfig(),
+  doFetch: typeof fetch = fetch,
+): Promise<PlatformResult> {
+  const first = await direct(query);
+  if (first.status === "ok" && first.products.length > 0) return first;
+  if (!config) return first;
+  const remote = await callFetchProxy("yahoo", query, config, doFetch);
+  if (remote.result && remote.result.status === "ok" && remote.result.products.length > 0) return remote.result;
+  const proxyReason = remote.result?.reason ?? (remote.result ? remote.result.status : "proxy_failed");
+  return { ...first, reason: `direct: ${first.reason ?? first.status}; proxy: ${proxyReason}` };
+}
+
+const fetchYahoo: PlatformFetcher = (query) => fetchYahooWithFallback(query);
 
 const fetchMomo: PlatformFetcher = (query) =>
   scrape("momo", query, async (fresh) => {

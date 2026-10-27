@@ -4,6 +4,7 @@ import {
   fetchRakutenDirect,
   fetchRutenDirect,
   fetchShopeeDirect,
+  fetchYahooDirect,
 } from "../../../functions/lib/providers";
 import { normalizeQuery } from "../../../shared/query";
 import {
@@ -44,6 +45,7 @@ export async function fetchShopDirect(platform: ProxyPlatform, query: string, en
   if (platform === "shopee") return fetchShopeeDirect(query);
   if (platform === "rakuten") return fetchRakutenDirect(query);
   if (platform === "ruten") return fetchRutenDirect(query);
+  if (platform === "yahoo") return fetchYahooDirect(query);
   return fetchCoupangDirect(query, {
     accessKey: env.COUPANG_ACCESS_KEY ?? "",
     secretKey: env.COUPANG_SECRET_KEY ?? "",

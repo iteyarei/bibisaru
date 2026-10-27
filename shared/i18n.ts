@@ -51,6 +51,7 @@ export const zhTW = {
   unavailableReasonFetchOnly: "原因：{reason} · fetchColo {fetchColo}",
   platformEmpty: "{name}沒有相符商品",
   goSearch: "前往搜尋",
+  goSearchSame: "同關鍵字前往搜尋",
   noData: "這次沒有取得商品，可以直接前往各平台搜尋",
   enableOne: "請至少打開一個平台",
   networkError: "連線失敗，請稍後再試",

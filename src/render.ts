@@ -51,7 +51,7 @@ export function renderNotices(
       const detail = unavailableNote(notice.reason, colo, notice.fetchColo || fetchColo);
       if (detail) card.dataset.reason = detail;
     }
-    const link = outbound(notice.searchUrl, "", `${messages.goSearch} ↗`);
+    const link = outbound(notice.searchUrl, "", `${notice.status === "unavailable" ? messages.goSearchSame : messages.goSearch} ↗`);
     card.append(dot, copy, link);
     root.append(card);
   }
