@@ -406,6 +406,8 @@ function renderHotKeywords(): void {
           event.preventDefault();
           searchInput.value = item.keyword;
           syncSearchClear();
+          hideHotPop();
+          searchInput.blur();
           window.scrollTo(0, 0);
           void runSearch(item.keyword, true);
         });
@@ -416,6 +418,34 @@ function renderHotKeywords(): void {
     }),
   );
 }
+
+const hotPop = document.querySelector<HTMLElement>("#hot-pop");
+function showHotPop(): void {
+  if (!hotPop || HOT_KEYWORDS.length === 0) return;
+  hotPop.hidden = false;
+  searchInput.setAttribute("aria-expanded", "true");
+}
+function hideHotPop(): void {
+  if (!hotPop) return;
+  hotPop.hidden = true;
+  searchInput.setAttribute("aria-expanded", "false");
+}
+searchInput.addEventListener("focus", showHotPop);
+searchInput.addEventListener("click", showHotPop);
+searchInput.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") hideHotPop();
+});
+searchForm.addEventListener("submit", hideHotPop);
+document.addEventListener("pointerdown", (event) => {
+  const target = event.target as Node;
+  if (target === searchInput || hotPop?.contains(target)) return;
+  hideHotPop();
+});
+searchForm.addEventListener("focusout", (event) => {
+  const next = event.relatedTarget as Node | null;
+  if (next && (next === searchInput || hotPop?.contains(next))) return;
+  if (next) hideHotPop();
+});
 
 renderHotKeywords();
 renderPlatforms();
