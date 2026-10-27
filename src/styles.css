@@ -734,3 +734,40 @@ footer p { margin: 0; }
   .search, .ex { height: 56px; }
   .results { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+
+.hot {
+  margin: 20px 0 8px;
+  padding: 14px 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.hot h2 {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+  color: var(--teal);
+}
+.hot-group + .hot-group { margin-top: 10px; }
+.hot-group h3 {
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.hot-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.hot-chip {
+  display: inline-block;
+  padding: 6px 12px;
+  border: 1px solid var(--teal);
+  border-radius: 999px;
+  color: var(--teal);
+  background: #fff;
+  font-size: 0.9rem;
+  text-decoration: none;
+  line-height: 1.3;
+}
+.hot-chip:hover, .hot-chip:focus-visible { background: var(--teal); color: #fff; }
+@media (max-width: 480px) {
+  .hot { padding: 12px; }
+  .hot-chip { padding: 6px 10px; font-size: 0.85rem; }
+}
