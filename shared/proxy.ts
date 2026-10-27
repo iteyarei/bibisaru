@@ -7,7 +7,7 @@ import type { PlatformFetcher, PlatformId, PlatformResult, Product } from "./typ
 /** Header carrying the shared secret. The value is never written to logs or URLs. */
 export const PROXY_TOKEN_HEADER = "PROXY_TOKEN";
 export const PROXY_FETCH_PATH = "/v1/fetch";
-export const PROXY_PLATFORMS = ["pxgo", "coupang", "shopee", "rakuten", "ruten"] as const;
+export const PROXY_PLATFORMS = ["pxgo", "coupang", "shopee", "rakuten", "ruten", "yahoo"] as const;
 export type ProxyPlatform = (typeof PROXY_PLATFORMS)[number];
 
 /** Long enough for 全聯's two 10s attempts plus the pause, still under the Pages limit. */

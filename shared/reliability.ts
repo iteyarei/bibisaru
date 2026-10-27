@@ -104,6 +104,10 @@ export function searchCacheControl(
   platforms: readonly { id: PlatformId; status: PlatformStatus }[],
 ): string {
   if (scrapedShopFailed(platforms)) return "no-store";
+  // 奇摩回 0 筆多半是被擋或改版，不寫入 3 分鐘快取
+  if (platforms.some((platform) => platform.status === "empty" && platform.id === "yahoo")) {
+    return "no-store";
+  }
   return `public, max-age=${SEARCH_CACHE_BROWSER_SECONDS}, s-maxage=${SEARCH_CACHE_SECONDS}`;
 }
 
