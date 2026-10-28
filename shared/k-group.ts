@@ -185,8 +185,41 @@ export const OTHER_PRODUCT_WORDS: readonly string[] = [
  */
 export const PET_WORDS: readonly string[] = ["貓窩", "狗窩", "倉鼠", "蜜袋鼯", "寵物"];
 
+/**
+ * Packaging, not food. A search for 「濾掛咖啡」 opens with the filter bags and
+ * the empty gift boxes the coffee is packed in: 「咖啡濾紙 濾掛咖啡濾紙 掛耳
+ * 內袋」 at NT$1 and 「台灣製造濾掛咖啡外盒 10入」 at NT$8. Nobody compares
+ * those, and they make the page look like it sells boxes, so they are dropped
+ * rather than shelved. Only 食品 pages read this list.
+ *
+ * What must survive: 「湯底包」, 「調理包」, 「燉包」, 「香料包」 and 「禮盒」 are
+ * still food. A bare 「內袋」 is left out on purpose — 「獨立內袋包裝」 is how a
+ * real coffee listing describes itself, so only the compound names count.
+ */
+export const PACKAGING_WORDS: readonly string[] = [
+  "濾紙",
+  "外盒",
+  "空盒",
+  "包裝袋",
+  "袋紙",
+  "沖泡袋",
+  "濾泡袋",
+  "掛耳內袋",
+  "濾掛內袋",
+  "耳掛內袋",
+];
+
+/** 「附精美外盒」 and 「送包裝袋」 say what comes with the food, not what is sold. */
+function packagingBonusPattern(words: readonly string[]): string {
+  if (!words.length) return "";
+  return `[附贈送含][^\\s，。;；【】（）()]{0,6}?(?:${words.join("|")})`;
+}
+
 /** Categories whose pages get sections. Everything else stays one list. */
 export const GROUPED_CATEGORIES: readonly string[] = ["3C", "家電"];
+
+/** The one category whose pages drop packaging, even though they never group. */
+export const PACKAGING_CATEGORY = "食品";
 
 /** Listings per section. The main shelf is never squeezed by the add-ons. */
 export const K_MAIN_ITEMS = 20;
@@ -314,6 +347,10 @@ export interface KGroupPlan {
   specWord: string;
   /** What may follow `specWord` and mean a measurement rather than an add-on. */
   specAfter: string;
+  /** Packaging words a 食品 title is dropped for. Empty on every other category. */
+  packaging: string[];
+  /** The strip shape for 「附外盒」, so a freebie box does not drop the food. */
+  packagingBonus: string;
   /** Phrases naming a bundled freebie rather than the item. */
   bundlePhrases: string[];
   /** Where a title stops naming the goods and starts listing the bundle. */
@@ -372,6 +409,8 @@ export function groupPlan(keyword: string, category: string): KGroupPlan {
     capacity: enabled ? CAPACITY.source : "",
     specWord: foldTitle("適用"),
     specAfter: SIZE_AFTER.source,
+    packaging: category === PACKAGING_CATEGORY ? keep(PACKAGING_WORDS, keyword) : [],
+    packagingBonus: category === PACKAGING_CATEGORY ? packagingBonusPattern(keep(PACKAGING_WORDS, keyword)) : "",
     bundlePhrases: BUNDLE_PHRASES.map(foldTitle),
     bundleSplit: BUNDLE_SPLIT.source,
     cjkBefore: CJK_BEFORE.source,
@@ -469,8 +508,19 @@ function accessoryHit(head: string, plan: KGroupPlan): boolean {
   });
 }
 
+/** True when the title sells the wrapping rather than the food. */
+export function packagingOnly(title: string, plan: KGroupPlan): boolean {
+  if (!plan.packaging.length) return false;
+  const raw = title ?? "";
+  const bare = plan.packagingBonus ? raw.replace(new RegExp(plan.packagingBonus, "g"), " ") : raw;
+  return anyWord(foldTitle(bare), plan.packaging);
+}
+
 /** Which section a title belongs in, or `drop` when it is a different product. */
 export function classifyTitle(title: string, plan: KGroupPlan): KGroupKind | "drop" {
+  // Packaging is checked before the shelf rules because the pages that need it
+  // — 食品 — never group: without this their one list would keep the boxes.
+  if (packagingOnly(title, plan)) return "drop";
   if (!plan.enabled) return "main";
   const hay = foldTitle(title);
   if (!hay) return "main";
