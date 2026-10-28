@@ -61,6 +61,26 @@ export const ACCESSORY_WORDS: readonly string[] = [
   "電源供應器",
   "攝影機",
   "遊戲片",
+  // Consumables for a machine: a dishwasher's powder is not a dishwasher, however
+  // often the box says 洗碗機 on it.
+  "洗碗粉",
+  "洗滌粉",
+  "粉劑",
+  "清潔劑",
+  "軟化鹽",
+  "亮碟劑",
+  "去味器",
+  "濾心",
+  "替換",
+  "補充包",
+  "濾網組",
+  // Spare parts. A machine advertises 「零纏繞邊刷」「自動洗拖布」 as features, so
+  // reading these off the whole title would misfile it. They only count once
+  // `productHead` has taken the feature list out: 「掃地機器人專用 刷頭」 and
+  // 「原廠主刷組」 keep theirs, 「(自動洗拖布/零纏繞邊刷)」 loses it with the bracket.
+  "刷頭",
+  "刷毛",
+  "主刷",
 ];
 
 /**
@@ -90,7 +110,59 @@ export const CONSOLE_JUNK_WORDS: readonly string[] = ["交換器", "集線器", 
  * The console itself. A title that says 主機 is the machine, even with a game
  * or a case thrown in; without the check a bundle would land in 周邊.
  */
-export const HARDWARE_WORDS: readonly string[] = ["主機", "同捆"];
+export const HARDWARE_WORDS: readonly string[] = [
+  "主機",
+  "同捆",
+  // A console sold as a bundle names itself this way without ever saying 主機:
+  // 「Switch 2 + 任選遊戲」, 「薩爾達40周年特仕版機」. Never a bare 「組合」 —
+  // 「磁吸保護殼組合」 is a case, and this list is read against the whole title.
+  "特仕版",
+  "特仕機",
+  "任選遊戲",
+  "主機組合",
+  "含遊戲",
+  "加贈遊戲",
+  "同捆機",
+  // 「Switch 2 + 任選joy-con」 is the console plus a pad of your choice, and a
+  // second-hand machine is often advertised only as 「全新未激活Switch2」.
+  "任選joycon",
+  "未激活",
+];
+
+/**
+ * What a machine says about itself. No add-on for it writes 「一級能效」 or
+ * 「壓縮機」, so a title carrying one is the goods even when it also names the
+ * filter it ships with: 「6L一級能效除濕機｜大水箱・甲殼素濾網」 is a dehumidifier.
+ */
+export const MACHINE_WORDS: readonly string[] = [
+  "能效",
+  "能源效率",
+  "壓縮機",
+  "變頻",
+  "馬達",
+  "除濕能力",
+  "乾衣模式",
+  "節能",
+  "省電",
+  "馬力",
+  "風量",
+  "轉速",
+  "加熱管",
+];
+
+/**
+ * Read as machine words too, but an add-on quotes them while saying what it
+ * fits (「適用 小米掃拖機器人 水箱」, 「適用14坪除濕機濾網」). They only count when
+ * the title carries no concrete accessory noun.
+ */
+export const MACHINE_SPEC_WORDS: readonly string[] = ["水箱", "坪數"];
+
+/**
+ * A capacity is only quoted on the device. 「坪」 is deliberately absent: it is
+ * the size of a room, and 「適用14坪除濕機濾網」 would become a dehumidifier.
+ * A digit straight after the unit is part of a model number (「AS401L2HEPA」).
+ */
+export const CAPACITY = /\d+(?:\.\d+)?\s*(?:L|公升|KG|公斤|吋|W|瓦)(?![A-Za-z0-9])/i;
 
 /** A console page sells one machine, and everything else is 周邊 to it. */
 const CONSOLE_PAGE = /switch|playstation|ps\s*[45]|xbox|steam\s*deck|遊戲主機/i;
@@ -160,6 +232,14 @@ const BUNDLE_PHRASES: readonly string[] = [
   "濾網升級",
   // 「負離子空氣清淨機 四層過濾網」 counts its filters; it is not selling one.
   "層過濾網",
+  // 「Qrevo 2 Pro掃拖機器人-耗材組」 is the robot with a year of supplies, and
+  // 「(皮套豪禮組) TCL NXTPAPER 11.5吋 平板電腦」 is the tablet with a case.
+  "耗材組",
+  "皮套豪禮組",
+  "大禮包",
+  // 「Switch 2 + 任選joy-con」 is the console with a pad of your choice. The pad
+  // word has to come off the head, or 「joycon」 sends the whole bundle below.
+  "任選joycon",
 ];
 
 /**
@@ -169,7 +249,20 @@ const BUNDLE_PHRASES: readonly string[] = [
  * without slashes, so nothing real is lost.
  */
 const SPEC_BRACKET =
-  /[（(【](?:[^）)】]*[/／][^）)】]*|[^）)】]*\s[^）)】]*\s[^）)】]*)[）)】]/g;
+  /[（(【](?:[^）)】]*[/／、][^）)】]*|[^）)】]*\s[^）)】]*\s[^）)】]*)[）)】]/g;
+
+/**
+ * A machine names what it runs on at the end of its own name:
+ * 「…空氣清淨機 FU-J41T-W(集塵HEPA濾網)」 sells the purifier, not a filter. A
+ * filter for sale opens with 適用／專用 instead, or puts 濾網 outside a bracket.
+ */
+const PART_BRACKET = /[（(]([^）)（）]{1,24})[）)]\s*$/;
+
+/** A bracket holding nothing but the part itself. */
+const PART_ONLY = /^(?:集塵|水洗|活性碳|HEPA|奈米|除菌)*(?:濾網|濾芯|濾心|濾袋)(?:組|\d+入)?$/i;
+
+/** A model number in front of the bracket, which is what makes it a spec. */
+const MODEL_BEFORE = /[A-Za-z][A-Za-z0-9_-]*\d/;
 
 /**
  * A bracket that claims a gift is a bonus, not the goods:
@@ -187,7 +280,7 @@ const AREA_BRACKET = /[（(【][^）)】]*坪[^）)】]*[）)】]/g;
 
 /** 「附原裝濾網x6」 and 「送HEPA濾網」 say what is thrown in, not what is sold. */
 const BONUS_PHRASE =
-  /[附送贈含][^\s，。;；【】（）()]{0,6}?(?:濾網|濾芯|濾心|集塵袋|耗材|配件|保護貼|保護殼|保護膜|鋼化膜|玻璃貼|貼膜)\d*(?:[x×*]\d+)?(?:入|片|個|組)?/g;
+  /[附送贈含][^\s，。;；【】（）()]{0,6}?(?:濾網|濾芯|濾心|集塵袋|耗材|配件|保護貼|保護殼|保護膜|鋼化膜|玻璃貼|貼膜|洗碗粉|洗滌粉|粉劑|清潔劑|軟化鹽|亮碟劑|去味器|補充包)\d*(?:[x×*]\d+)?(?:入|片|個|組|包|盒)?(?:[+＋][^\s，。;；【】（）()]{0,8})?/g;
 
 export interface KGroupPlan {
   /** False on 生活／食品 pages: one list, no headings, nothing dropped. */
@@ -209,6 +302,14 @@ export interface KGroupPlan {
   consolePage: boolean;
   /** What makes a title the console itself rather than a game for it. */
   hardware: string[];
+  /** Words only the machine itself writes. */
+  machine: string[];
+  /** Words the machine and its add-ons both write. */
+  machineSpec: string[];
+  /** Add-on words naming a thing, which outrank a capacity; 「適用」 does not. */
+  accessoryNouns: string[];
+  /** The shape of a capacity quote: 22L, 6公斤, 11.5吋, 1500W. Never 坪. */
+  capacity: string;
   /** The accessory word that may also introduce a size. */
   specWord: string;
   /** What may follow `specWord` and mean a measurement rather than an add-on. */
@@ -223,6 +324,10 @@ export interface KGroupPlan {
   deviceSpec: string;
   /** The bracket shapes that describe rather than sell. */
   specBracket: string;
+  /** A trailing bracket naming the part a machine runs on, and a model before it. */
+  partBracket: string;
+  partOnly: string;
+  modelBefore: string;
   areaBracket: string;
   giftBracket: string;
   bonusPhrase: string;
@@ -246,6 +351,7 @@ function keep(list: readonly string[], keyword: string): string[] {
  */
 export function groupPlan(keyword: string, category: string): KGroupPlan {
   const enabled = GROUPED_CATEGORIES.includes(category);
+  const specWordFolded = foldTitle("適用");
   const heatEnabled = enabled && /毯|墊/.test(foldTitle(keyword));
   return {
     enabled,
@@ -260,6 +366,10 @@ export function groupPlan(keyword: string, category: string): KGroupPlan {
     consoleDrop: enabled && CONSOLE_PAGE.test(keyword ?? "") ? keep(CONSOLE_JUNK_WORDS, keyword) : [],
     consolePage: enabled && CONSOLE_PAGE.test(keyword ?? ""),
     hardware: HARDWARE_WORDS.map(foldTitle),
+    machine: enabled ? keep(MACHINE_WORDS, keyword) : [],
+    machineSpec: enabled ? keep(MACHINE_SPEC_WORDS, keyword) : [],
+    accessoryNouns: enabled ? keep([...ACCESSORY_WORDS, ...CABLE_WORDS], keyword).filter((w) => w !== specWordFolded) : [],
+    capacity: enabled ? CAPACITY.source : "",
     specWord: foldTitle("適用"),
     specAfter: SIZE_AFTER.source,
     bundlePhrases: BUNDLE_PHRASES.map(foldTitle),
@@ -267,6 +377,9 @@ export function groupPlan(keyword: string, category: string): KGroupPlan {
     cjkBefore: CJK_BEFORE.source,
     deviceSpec: enabled && category === IS_3C ? DEVICE_SPEC.source : "",
     specBracket: SPEC_BRACKET.source,
+    partBracket: PART_BRACKET.source,
+    partOnly: PART_ONLY.source,
+    modelBefore: MODEL_BEFORE.source,
     areaBracket: AREA_BRACKET.source,
     giftBracket: GIFT_BRACKET.source,
     bonusPhrase: BONUS_PHRASE.source,
@@ -303,7 +416,7 @@ const CJK_BEFORE = /[\u3400-\u9fff）)】」』]/;
  * names, so 「適用 iPhone 18 Pro 保護殼」 keeps its accessory word.
  */
 export function productHead(title: string, plan: KGroupPlan): string {
-  const bare = (title ?? "")
+  const bare = withoutPartBracket(title ?? "", plan)
     .replace(new RegExp(plan.giftBracket, "g"), " ")
     .replace(new RegExp(plan.areaBracket, "g"), " ")
     .replace(new RegExp(plan.specBracket, "g"), " ")
@@ -318,6 +431,23 @@ export function productHead(title: string, plan: KGroupPlan): string {
   const named = cut > 0 && CJK_BEFORE.test(before) ? promo.slice(0, cut) : promo;
   const head = foldTitle(named);
   return plan.bundlePhrases.reduce((text, phrase) => text.split(phrase).join(""), head);
+}
+
+/**
+ * 「SHARP 10坪AIoT智慧除菌離子空氣清淨機 FU-J41T-W(集塵HEPA濾網)」 is a purifier
+ * that says which filter it runs on; 「適用 FU-J41T-W 集塵HEPA濾網」 is the filter.
+ * The difference is the model number and a name in front of the bracket.
+ */
+function withoutPartBracket(title: string, plan: KGroupPlan): string {
+  const bracket = new RegExp(plan.partBracket).exec(title);
+  if (!bracket) return title;
+  if (!new RegExp(plan.partOnly, "i").test(bracket[1])) return title;
+  const before = title.slice(0, bracket.index);
+  if (!new RegExp(plan.modelBefore).test(before)) return title;
+  if (!/[\u3400-\u9fff]/.test(before)) return title;
+  // A listing that only says what it fits is not the machine it fits.
+  if (/^(?:適用|專用|替換|通用|副廠)/.test(foldTitle(before))) return title;
+  return before;
 }
 
 /**
@@ -355,7 +485,23 @@ export function classifyTitle(title: string, plan: KGroupPlan): KGroupKind | "dr
   // Joy-Con, a 記憶卡 — is 周邊 however the shop words it. Without this a
   // NT$1,580 game would be the cheapest 「主機」 on the page.
   if (plan.consolePage && !anyWord(hay, plan.hardware)) return "accessories";
-  return accessoryHit(productHead(title, plan), plan) ? "accessories" : "main";
+  // The machine names its own engineering. That outranks an add-on word in the
+  // same title, because 「6L一級能效除濕機｜大水箱・甲殼素濾網」 sells the machine.
+  if (anyWord(hay, plan.machine)) return "main";
+  const head = productHead(title, plan);
+  if (!accessoryHit(head, plan)) return "main";
+  // A capacity or a 水箱 is weak evidence: an add-on quotes them while saying
+  // what it fits. It only wins when no concrete accessory noun is on the title.
+  if (machineSpecHit(title, head, plan) && !anyWord(head, plan.accessoryNouns)) return "main";
+  return "accessories";
+}
+
+/** 22L on a machine of its own, not on a filter that says which machine it fits. */
+function machineSpecHit(title: string, head: string, plan: KGroupPlan): boolean {
+  if (anyWord(head, plan.machineSpec)) return true;
+  if (!plan.capacity) return false;
+  const capacity = new RegExp(plan.capacity, "i");
+  return capacity.test(title ?? "") || capacity.test(head);
 }
 
 /** One rendered section. Only sections with listings ever reach the page. */

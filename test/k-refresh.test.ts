@@ -229,6 +229,45 @@ describe("the inline refresh draws the same shelves as the server", () => {
     expect(JSON.stringify(sectionOf(list, "main"))).toContain("法蘭絨");
   });
 
+  it("draws the same shelves the server does for the misses it just fixed", async () => {
+    // The browser rule is a second copy of the server rule, so the two can drift
+    // apart without a single server test noticing. These are the titles that
+    // were misread: a machine behind its own filter bracket, a freebie powder,
+    // and a console bundle.
+    const list = await afterRefresh("除濕機", "家電", [
+      {
+        platform: "momo",
+        title: "【SAMPO 聲寶】6L一級能效除濕機｜大水箱・甲殼素濾網・乾衣模式(AD-WB512T)",
+        price: 4_890,
+        image: "",
+        url: "https://www.momoshop.com.tw/goods/1",
+      },
+      { platform: "pchome", title: "SAMPO 除濕機 專用 替換濾網", price: 590, image: "", url: "https://24h.pchome.com.tw/prod/1" },
+    ]);
+    expect(headingsOf(list)).toEqual(["本體", "配件與周邊"]);
+    expect(JSON.stringify(sectionOf(list, "main"))).toContain("一級能效除濕機");
+    expect(JSON.stringify(sectionOf(list, "accessories"))).toContain("替換濾網");
+
+    const console = await afterRefresh("Switch 2", "3C", [
+      {
+        platform: "momo",
+        title: "【Nintendo 任天堂】Switch 2 薩爾達40周年特仕版機+《NS2寶可夢傳說 Z-A》+《Joy-con 2》",
+        price: 20_788,
+        image: "",
+        url: "https://www.momoshop.com.tw/goods/2",
+      },
+      {
+        platform: "pchome",
+        title: "【Nintendo 任天堂】NS2 Nintendo Switch 運動 度假勝地(台灣公司貨)",
+        price: 1_580,
+        image: "",
+        url: "https://24h.pchome.com.tw/prod/2",
+      },
+    ]);
+    expect(JSON.stringify(sectionOf(console, "main"))).toContain("特仕版機");
+    expect(JSON.stringify(sectionOf(console, "accessories"))).toContain("度假勝地");
+  });
+
   it("prints one headingless list when a 生活 page has nothing to split", async () => {
     const list = await afterRefresh("棉被", "生活", [
       { platform: "momo", title: "棉被 雙人 冬被", price: 1_290, image: "", url: "https://www.momoshop.com.tw/goods/1" },

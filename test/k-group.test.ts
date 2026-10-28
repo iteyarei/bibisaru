@@ -307,3 +307,84 @@ describe("platform ids survive a legacy row", () => {
     expect(groups[0].products[0].platform).toBe("momo");
   });
 });
+
+describe("a machine names its own engineering", () => {
+  // A search for 「除濕機」 returns its filters, and the shop words the machine
+  // the way the filter is worded: 「6L一級能效除濕機｜大水箱・甲殼素濾網」.
+  it("keeps the dehumidifier that mentions its filter on the main shelf", () => {
+    expect(
+      kindOf("【SAMPO 聲寶】6L一級能效除濕機｜大水箱・甲殼素濾網・乾衣模式(AD-WB512T)", "除濕機"),
+    ).toBe("main");
+    // The same model without the word 濾網, which was always read correctly.
+    expect(kindOf("SAMPO聲寶 6L一級能效除濕機 AD-WB512T", "除濕機")).toBe("main");
+  });
+
+  it("still reads a filter for that machine as an add-on", () => {
+    expect(kindOf("SAMPO 除濕機 專用 替換濾網", "除濕機")).toBe("accessories");
+    // 「坪」 is the size of a room, not a capacity: it must not save this one.
+    expect(kindOf("適用 14坪 除濕機 濾網", "除濕機")).toBe("accessories");
+  });
+
+  it("reads a capacity as the machine, and 適用 mid-title as nothing", () => {
+    expect(kindOf("適用智能除溼機家用22L抽溼機靜音臥室去溼機全屋乾衣機", "乾衣機")).toBe("main");
+    // A case quotes the phone it fits and no capacity of its own.
+    expect(kindOf("適用 iPhone 18 Pro 保護殼", "iPhone 18 Pro", "3C")).toBe("accessories");
+    expect(kindOf("磁吸保護殼", "iPhone 18 Pro", "3C")).toBe("accessories");
+  });
+
+  it("puts a machine's filter behind a model number back on the main shelf", () => {
+    expect(
+      kindOf("【SHARP 夏普】10坪AIoT智慧除菌離子空氣清淨機 FU-J41T-W(集塵HEPA濾網)", "空氣清淨機"),
+    ).toBe("main");
+    // The same filter sold on its own has no model in front of the bracket.
+    expect(kindOf("適用 FU-J41T-W 集塵HEPA濾網 一年份", "空氣清淨機")).toBe("accessories");
+  });
+});
+
+describe("dishwasher powder is not a dishwasher", () => {
+  it("moves the powder to the add-ons", () => {
+    expect(kindOf("【finish 亮碟】洗碗機專用強力洗滌粉劑洗碗粉", "洗碗機")).toBe("accessories");
+  });
+
+  it("keeps the machine that throws the powder in", () => {
+    // 「送洗碗粉六人份」 is a freebie, so the head never reaches 洗碗粉.
+    expect(
+      kindOf("含基本安裝送洗碗粉六人份 熱風循環洗碗機 HDW-06BT010+HDP-10D1 (24h到貨)", "洗碗機"),
+    ).toBe("main");
+  });
+});
+
+describe("a console bundle is the console", () => {
+  it("keeps a bundle with a game on the main shelf", () => {
+    expect(kindOf("任天堂 Nintendo Switch 2 + 任選遊戲", "Switch 2", "3C")).toBe("main");
+    expect(
+      kindOf(
+        "【Nintendo 任天堂】Switch 2 薩爾達40周年特仕版機+《NS2寶可夢傳說 Z-A》+《Joy-con 2》+《9H鋼化貼》",
+        "Switch 2",
+        "3C",
+      ),
+    ).toBe("main");
+    expect(kindOf("任天堂 Nintendo Switch 2 + 任選joy-con", "Switch 2", "3C")).toBe("main");
+  });
+
+  it("still reads a game and a pad as 周邊", () => {
+    expect(
+      kindOf("【Nintendo 任天堂】NS2 Nintendo Switch 運動 度假勝地(台灣公司貨 -附贈首批特典)", "Switch 2", "3C"),
+    ).toBe("accessories");
+    expect(kindOf("Nintendo 任天堂 Switch 2 Joy-con 2 控制器 手把 (台灣公司貨)", "Switch 2", "3C")).toBe("accessories");
+  });
+});
+
+describe("spare parts belong to the add-ons", () => {
+  it("moves a brush sold for a robot to the add-ons", () => {
+    expect(kindOf("【LG 樂金】掃地機器人專用 防糾結滾輪刷頭AHR73889701", "掃地機器人")).toBe("accessories");
+    expect(
+      kindOf("Vbot i6 / R8 / M270 / R10掃地機器人原廠專用 二代增效彈性刷毛 藍彩刷頭(4入)", "掃地機器人"),
+    ).toBe("accessories");
+  });
+
+  it("keeps a machine that advertises the parts it runs", () => {
+    // 「零纏繞邊刷」「自動洗拖布」 are features of the robot, not parts for sale.
+    expect(kindOf("【Roborock】Qrevo L 全能掃拖機器人(自動洗拖布/零纏繞邊刷/10000Pa)", "掃地機器人")).toBe("main");
+  });
+});
