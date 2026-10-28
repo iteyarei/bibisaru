@@ -184,6 +184,43 @@ npx wrangler secret put COUPANG_SECRET_KEY --config workers/fetch-proxy/wrangler
 
 介面文字集中在 `shared/i18n.ts`，目前只有繁體中文。
 
+## 節慶造型吉祥物
+
+節慶期間吉祥物會自動換成節慶版，節日過後隔天換回平常版。規則都在 `shared/festival.ts`：
+
+- active 區間是 **[D-5, D]**，含頭尾。也就是節日前 5 天開始換、節日當天是最後一天。
+- 同一天若有多個節慶 active，取最接近的那個（`D - today` 最小），平手時照 `FESTIVALS` 的順序。
+- 日期一律用台北時間（`Asia/Taipei`）判定，不看瀏覽器時區。
+
+| key | 節慶 | 日期來源 |
+|---|---|---|
+| `new-year` | 元旦 | 每年 1/1 |
+| `lunar-new-year` | 農曆新年 | 農曆 1/1 |
+| `lantern` | 元宵 | 農曆 1/15 |
+| `dragon-boat` | 端午 | 農曆 5/5 |
+| `mid-autumn` | 中秋 | 農曆 8/15 |
+| `halloween` | 萬聖節 | 每年 10/31 |
+| `christmas` | 聖誕節 | 每年 12/25 |
+
+農曆節慶的國曆日期是事先算好的表：`shared/festival-dates.json`，涵蓋 2025-2045。改表要跑
+`npm run festival:dates` 重新產生，`test/festival.test.ts` 會用 `lunar-javascript` 再算一次比對，
+表跟庫不一致就會紅。`lunar-javascript` 只是 devDependency，**前端執行時只讀 JSON，不會 import 它**。
+超出 2045 的年份回 `null`（當天沒有節慶），不會拋錯。
+
+### 換圖
+
+圖放進 `src/assets/festivals/`，檔名 `bibihou-<key>-1024.png`（例如 `bibihou-halloween-1024.png`）。
+`src/festival-mascot.ts` 用 `import.meta.glob` 依檔名比對，**丟進去、重新部署就會自動生效**，
+不用改任何程式。目錄是空的時候就算當天有節慶也不會切換，所以不會破圖；圖載入失敗也會退回
+`/mascot.png`。只認 1024 那張，若同時有 512 或 icon 仍然以 1024 為主。
+
+### 開關
+
+`shared/festival-config.ts`：
+
+- `enabled: false`：總開關，完全回到平常版，不載入任何節慶圖。
+- `showLabel: false`：只關掉圖旁邊那行節慶小字，圖照換。
+
 聯盟參數只准加在 `shared/affiliate.ts` 的 `applyAffiliate`。除了蝦皮、酷澎與通路王的三家店以外，外出網址不會被改寫。蝦皮商品與「前往搜尋」連結會改成 `https://s.shopee.tw/an_redir`，`affiliate_id` 預設 `16330620037`，可用環境變數 `SHOPEE_AFFILIATE_ID` 覆寫，`sub_id` 是 `bibisaru`。酷澎的「前往搜尋」改成 `https://link.tw.coupang.com/re2/AFFKOLSRP`，`lptag` 預設 `AF6766993`，可用環境變數 `COUPANG_AFFILIATE_ID` 覆寫，`pageKey` 是原本的關鍵字，不加 `traceid`。商品清單改打 Partners Open API（`COUPANG_ACCESS_KEY`、`COUPANG_SECRET_KEY`，Pages secrets）。API 回的 `productUrl` 已是分潤連結，原樣使用。金鑰缺或 API 失敗時不抓 HTML，改顯示「暫時無法取得」和上面的分潤搜尋連結。
 
 通路王 Deep Link：momo、Yahoo 奇摩購物中心（`tw.buy.yahoo.com`）、樂天的商品連結與「前往搜尋」、「搜尋同款」等訪客點擊的外出連結，會改成 `https://product.mchannles.com/redirect_wa.php?k=<K>&uid1=bibisaru&tourl=<原網址 encodeURIComponent>`。網域比對含子網域，已經是 `product.mchannles.com` 的連結不會再包一次。`K`（活動編號 `2IsZi`，不是密鑰）預設寫在 `shared/affiliate.ts`，可用環境變數 `ICHANNELS_K` 覆寫。伺服器抓資料用的 `rawSearchUrl` 與原始商品網址永遠不包轉址。單元測試會鎖住這些規則。

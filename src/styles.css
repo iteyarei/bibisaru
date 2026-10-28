@@ -94,6 +94,29 @@ header {
   color: rgba(255, 255, 255, 0.92);
 }
 
+/*
+ * 節慶小字。只在有節慶圖且 showLabel 開著時由 JS 插入。
+ * 字級小、不換行、不撐高 header：手機上就縮成更小的字。
+ */
+.festival-label {
+  margin: 0;
+  flex-basis: 100%;
+  font-size: 12px;
+  /* 行高壓在 1.2，讓「小字 + 8px 間距」不會超過左邊 56px 的圖，
+     這樣 header 高度在任何寬度都跟平常版一樣，換圖不會造成版面跳動。 */
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #fff8e1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
+@media (max-width: 420px) {
+  .festival-label {
+    font-size: 11px;
+  }
+}
+
 .wrap {
   max-width: 1120px;
   margin: 0 auto;
