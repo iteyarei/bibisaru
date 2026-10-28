@@ -280,59 +280,6 @@ export function etmallProducts(data: unknown): Product[] | null {
   return normalizeEtmall(data);
 }
 
-export function normalizeKingstone(html: string): Product[] {
-  return kingstoneProducts(html) ?? [];
-}
-
-export function kingstoneProducts(html: string): Product[] | null {
-  if (!html.includes('class="displayunit"')) return null;
-  const chunks = html.split('class="displayunit"').slice(1, 81);
-  return collect(
-    "kingstone",
-    chunks.map((chunk) => {
-      const href = /href="\/basic\/(\d+)/.exec(chunk);
-      const title = /<h3 class="pdnamebox">\s*<a\b[^>]*>([\s\S]*?)<\/a>/.exec(chunk);
-      const image = /<img\b[^>]*\ssrc="(https:[^"]+)"/.exec(chunk);
-      const price = /(?:特價|定價|優惠價)<b>([\d,]+)<\/b>/.exec(chunk);
-      return {
-        title: title?.[1] ?? "",
-        price: parsePrice(price?.[1] ?? null),
-        image: image?.[1] ?? "",
-        url: href ? `https://www.kingstone.com.tw/basic/${href[1]}/` : "",
-        skip: /貨到通知|缺貨|已售完|無庫存/.test(chunk),
-      };
-    }),
-  );
-}
-
-export function normalizeSanmin(html: string): Product[] {
-  return sanminProducts(html) ?? [];
-}
-
-export function sanminProducts(html: string): Product[] | null {
-  if (!html.includes('class="sProduct"')) return null;
-  const chunks = html.split('class="sProduct"').slice(1, 81);
-  return collect(
-    "sanmin",
-    chunks.map((chunk) => {
-      const href = /href="\/product\/index\/(\d+)"/.exec(chunk);
-      const title = /<h3>([\s\S]*?)<\/h3>/.exec(chunk);
-      const image = /data-src="(https:[^"]+)"/.exec(chunk);
-      const sale = /class="Price\s*"[^>]*>([\d,]+)/.exec(chunk);
-      const list = /class="ListPrice"[^>]*>[\s\S]*?([\d,]{2,})/.exec(chunk);
-      const stockHtml = /class="Stock\b[^"]*"[^>]*>([\s\S]*?)<\/div>/.exec(chunk)?.[1] ?? "";
-      const stockText = decodeHtml(stockHtml.replace(/<[^>]*>/g, "")).replace(/\s+/g, "");
-      return {
-        title: title?.[1] ?? "",
-        price: parsePrice(sale?.[1] ?? list?.[1] ?? null),
-        image: image?.[1] ?? "",
-        url: href ? `https://www.sanmin.com.tw/product/index/${href[1]}` : "",
-        skip: stockText.includes("無庫存") || /^庫存[:：]0(?:$|[^0-9])/.test(stockText),
-      };
-    }),
-  );
-}
-
 export function normalizeRakuten(html: string): Product[] {
   return rakutenProducts(html) ?? [];
 }

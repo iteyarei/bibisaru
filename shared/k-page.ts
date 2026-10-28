@@ -9,11 +9,12 @@ import {
   SITE_ORIGIN,
   slugForKeyword,
 } from "./k-slugs";
+import { matchPlan } from "./k-pick";
 import { PLATFORM_IDS, PLATFORMS, platformById } from "./platforms";
 import type { PlatformReport, Product } from "./types";
 
 /** How many listings a landing page shows. Enough to be useful, small enough to stay fast. */
-export const K_PAGE_ITEMS = 18;
+export const K_PAGE_ITEMS = 20;
 
 const MAX_META_PLATFORMS = 3;
 
@@ -128,7 +129,7 @@ export function kPageDescription(data: KPageData): string {
   const { keyword, products } = data;
   const shops = topPlatformNames(products, data.platforms);
   if (!products.length) {
-    return `${keyword} 的即時比價頁：一次搜尋 momo、PChome、Yahoo 奇摩、酷澎、蝦皮、全聯、東森、金石堂、三民、樂天、露天，把價格由低到高排好。目前各賣場暫時沒有回傳商品，可以直接點進去看最新價格。`;
+    return `${keyword} 的即時比價頁：一次搜尋 momo、PChome、Yahoo 奇摩、酷澎、蝦皮、全聯、東森、樂天、露天，把價格由低到高排好。目前各賣場暫時沒有回傳商品，可以直接點進去看最新價格。`;
   }
   const low = products[0].price;
   const high = products[products.length - 1].price;
@@ -270,12 +271,17 @@ ${options.script ?? ""}
  * on failure keeps the snapshot while saying how old it is.
  */
 function refreshScript(keyword: string, snapshot: string): string {
+  const plan = matchPlan(keyword);
   const config = scriptJson({
     q: keyword,
     platforms: kPagePlatformParam(),
     limit: K_PAGE_ITEMS,
     snapshot,
     names: Object.fromEntries(PLATFORMS.map((platform) => [platform.id, platform.name])),
+    // The same relevance rule the server used, so the refresh cannot
+    // reintroduce the last-generation accessories it just dropped.
+    phrase: plan.phrase,
+    forms: plan.tokens.map((token) => [...token.forms]),
   });
   return `<script>
 (function(){
@@ -359,11 +365,70 @@ function refreshScript(keyword: string, snapshot: string): string {
     li.appendChild(a);
     return li;
   }
+  function fold(v){
+    var s = String(v == null ? "" : v);
+    if (s.normalize) s = s.normalize("NFKC");
+    return s.toLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, "");
+  }
+  function rankOf(title){
+    var hay = fold(title);
+    if (!cfg.forms.length) return 1;
+    for (var i = 0; i < cfg.forms.length; i++) {
+      var forms = cfg.forms[i], hit = false;
+      for (var j = 0; j < forms.length; j++) {
+        if (forms[j] && hay.indexOf(forms[j]) >= 0) { hit = true; break; }
+      }
+      if (!hit) return 2;
+    }
+    return cfg.phrase && hay.indexOf(cfg.phrase) >= 0 ? 0 : 1;
+  }
+  function pick(results){
+    var byShop = {}, picked = [], seen = {}, cursors = {}, order = cfg.platforms.split(",");
+    results.forEach(function(p, i){
+      if (!p || typeof p.price !== "number" || !isFinite(p.price) || p.price <= 0) return;
+      if (typeof p.title !== "string" || !p.title.replace(/\\s+/g, "")) return;
+      var r = rankOf(p.title);
+      if (r > 1) return;
+      var print = p.platform + "|" + fold(p.title) + "|" + p.price;
+      if (seen[print]) return;
+      seen[print] = true;
+      var row = { p: p, r: r, i: i };
+      var queue = byShop[p.platform] || (byShop[p.platform] = []);
+      queue.push(row);
+    });
+    function cmp(a, b){
+      return a.r - b.r || a.p.price - b.p.price || (a.p.rank || 0) - (b.p.rank || 0) || a.i - b.i;
+    }
+    for (var key in byShop) if (Object.prototype.hasOwnProperty.call(byShop, key)) byShop[key].sort(cmp);
+    // The same round-robin the server runs: one row per shop per turn, so a
+    // single shop cannot fill the page with its own cheap listings. Strong
+    // matches go first; weaker ones only fill what is left.
+    for (var tier = 0; tier <= 1 && picked.length < cfg.limit; tier++) {
+      var moved = true;
+      while (picked.length < cfg.limit && moved) {
+        moved = false;
+        for (var k = 0; k < order.length && picked.length < cfg.limit; k++) {
+          var shop = order[k];
+          if (!byShop[shop]) continue;
+          // Only a row that is taken moves the cursor; a weaker row skipped in
+          // this tier has to stay available for the next one.
+          var at = cursors[shop] || 0;
+          while (at < byShop[shop].length && byShop[shop][at].r > tier) at++;
+          if (at >= byShop[shop].length) continue;
+          picked.push(byShop[shop][at]);
+          cursors[shop] = at + 1;
+          moved = true;
+        }
+      }
+    }
+    picked.sort(function(a, b){
+      return a.p.price - b.p.price || a.r - b.r || (a.p.rank || 0) - (b.p.rank || 0) || a.i - b.i;
+    });
+    return picked.map(function(row){ return row.p; });
+  }
   function draw(body){
     if (!body || !Array.isArray(body.results)) return false;
-    var items = body.results.filter(function(p){
-      return p && typeof p.price === "number" && isFinite(p.price) && p.price > 0;
-    }).sort(function(a, b){ return a.price - b.price; }).slice(0, cfg.limit);
+    var items = pick(body.results);
     if (!items.length) return false;
     var frag = document.createDocumentFragment();
     items.forEach(function(p, i){ frag.appendChild(item(p, i === 0)); });

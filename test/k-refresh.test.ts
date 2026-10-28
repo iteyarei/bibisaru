@@ -143,8 +143,8 @@ describe("the inline refresh, actually run", () => {
     const harness = mount(scriptOf(renderKPage(page())), async () => ({
       fetchedAt: "2026-10-28T04:00:00.000Z",
       results: [
-        { platform: "pchome", title: "即時商品", price: 4_490, image: "https://img.test/a.jpg", url: "https://24h.pchome.com.tw/prod/1" },
-        { platform: "momo", title: "次便宜", price: 9_980, image: "", url: "https://www.momoshop.com.tw/goods/2" },
+        { platform: "pchome", title: "Switch 2 主機 即時商品", price: 4_490, image: "https://img.test/a.jpg", url: "https://24h.pchome.com.tw/prod/1" },
+        { platform: "momo", title: "Switch 2 次便宜 主機", price: 9_980, image: "", url: "https://www.momoshop.com.tw/goods/2" },
       ],
     }));
     harness.fire();
@@ -154,7 +154,7 @@ describe("the inline refresh, actually run", () => {
     expect(harness.list.children).toHaveLength(2);
     const first = JSON.stringify(harness.list.children[0]);
     expect(first).toContain("NT$4,490");
-    expect(first).toContain("即時商品");
+    expect(first).toContain("Switch 2 主機 即時商品");
     // The date line is the real fetch time, not the 2024 snapshot.
     expect(harness.stamp.textContent).toBe("價格為 2026/10/28 查詢，實際依各賣場為準");
     expect(harness.stamp.textContent).not.toContain("2024");
@@ -188,6 +188,59 @@ describe("the inline refresh, actually run", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(harness.stamp.textContent).toContain("目前無法取得最新價格");
     expect(harness.stamp.classList.contains("idle")).toBe(true);
+  });
+
+  it("drops live rows whose title does not carry the keyword", async () => {
+    const harness = mount(scriptOf(renderKPage(page())), async () => ({
+      fetchedAt: "2026-10-28T04:00:00.000Z",
+      results: [
+        { platform: "momo", title: "Switch 保護貼 滿版", price: 190, image: "", url: "https://www.momoshop.com.tw/goods/1" },
+        { platform: "pchome", title: "Switch 2 主機", price: 15_880, image: "", url: "https://24h.pchome.com.tw/prod/1" },
+      ],
+    }));
+    harness.fire();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(harness.list.children).toHaveLength(1);
+    expect(JSON.stringify(harness.list.children[0])).toContain("NT$15,880");
+    expect(harness.stamp.classList.contains("idle")).toBe(false);
+  });
+
+  it("keeps the live list spread across shops instead of one shop's cheap rows", async () => {
+    const ruten = Array.from({ length: 10 }, (_, i) => ({
+      platform: "ruten",
+      title: `Switch 2 福利品 ${i + 1}`,
+      price: 100 + i,
+      image: "",
+      url: `https://www.ruten.com.tw/item/${i}`,
+    }));
+    const harness = mount(scriptOf(renderKPage(page())), async () => ({
+      fetchedAt: "2026-10-28T04:00:00.000Z",
+      results: [...ruten, { platform: "momo", title: "Switch 2 主機", price: 15_880, image: "", url: "https://www.momoshop.com.tw/goods/9" }],
+    }));
+    harness.fire();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(harness.list.children).toHaveLength(11);
+    const shops = harness.list.children.map((child) => JSON.stringify(child));
+    expect(shops.some((html) => html.includes('"textContent":"momo"'))).toBe(true);
+    expect(shops.some((html) => html.includes('"textContent":"露天"'))).toBe(true);
+  });
+
+  it("keeps an off-keyword row out of a live refresh", async () => {
+    const appliance: KPageData = { ...page(), keyword: "除濕機", slug: "chushiji", category: "家電" };
+    const harness = mount(scriptOf(renderKPage(appliance)), async () => ({
+      fetchedAt: "2026-10-28T04:00:00.000Z",
+      results: [
+        { platform: "pchome", title: "除濕 專用 濾網 副廠", price: 350, image: "", url: "https://24h.pchome.com.tw/prod/A1" },
+        { platform: "momo", title: "除濕機 12L", price: 3_990, image: "", url: "https://www.momoshop.com.tw/goods/1" },
+      ],
+    }));
+    harness.fire();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(harness.list.children).toHaveLength(1);
+    expect(JSON.stringify(harness.list.children[0])).toContain('"textContent":"momo"');
   });
 
   it("never blocks the reader: the snapshot is visible before the fetch resolves", () => {

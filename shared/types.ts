@@ -6,8 +6,6 @@ export type PlatformId =
   | "shopee"
   | "pxgo"
   | "etmall"
-  | "kingstone"
-  | "sanmin"
   | "rakuten"
   | "ruten";
 

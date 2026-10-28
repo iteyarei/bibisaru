@@ -144,7 +144,6 @@ describe("通路王 Deep Link", () => {
   const cases: Array<[string, string]> = [
     ["momo", "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=14040053&Area=search"],
     ["Yahoo 奇摩購物中心", "https://tw.buy.yahoo.com/gdsale/airpods-11986319.html"],
-    ["金石堂", "https://www.kingstone.com.tw/basic/3030000102785/"],
     ["樂天", "https://www.rakuten.com.tw/shop/polywell/product/f88b3l6sa/"],
   ];
 
@@ -161,7 +160,7 @@ describe("通路王 Deep Link", () => {
   it("also covers subdomains and Chinese search keywords", () => {
     const mobile = "https://m.momoshop.com.tw/search.momo?searchKeyword=%E8%80%B3%E6%A9%9F";
     expect(applyAffiliate(mobile)).toBe(ichannels(mobile));
-    const search = `https://www.kingstone.com.tw/search/key/${encodeURIComponent("東野圭吾")}`;
+    const search = `https://www.momoshop.com.tw/search/${encodeURIComponent("東野圭吾")}`;
     expect(new URL(applyAffiliate(search)).searchParams.get("tourl")).toBe(search);
     expect(applyAffiliate(search)).toContain(encodeURIComponent(encodeURIComponent("東野圭吾")));
   });
@@ -176,7 +175,6 @@ describe("通路王 Deep Link", () => {
     for (const url of [
       "https://24h.pchome.com.tw/prod/ABC",
       "https://pxbox.es.pxmart.com.tw/product/1",
-      "https://www.sanmin.com.tw/product/index/004113511",
       "https://www.etmall.com.tw/i/7926508",
       "https://www.ruten.com.tw/item/22324948234766/",
       "http://www.momoshop.com.tw/goods/1",
@@ -188,17 +186,29 @@ describe("通路王 Deep Link", () => {
     }
   });
 
+  it("leaves urls from shops outside the platform list alone", () => {
+    // Cached responses and archived pages can still carry urls for hosts that
+    // are not part of any affiliate program, so those must go out untouched.
+    for (const url of [
+      "https://www.kingstone.com.tw/basic/3030000102785/",
+      "https://www.sanmin.com.tw/product/index/004113511",
+    ]) {
+      expect(applyAffiliate(url), url).toBe(url);
+      expect(ichannelsAffiliateUrl(url), url).toBe(url);
+    }
+  });
+
   it("keeps Shopee and Coupang on their own programs", () => {
     expect(applyAffiliate("https://shopee.tw/-i.7.42")).toBe(shopeeAffiliateUrl("https://shopee.tw/-i.7.42"));
     expect(applyAffiliate("https://shopee.tw/-i.7.42")).not.toContain("mchannles");
     expect(applyAffiliate(rawSearchUrl("coupang", "電鍋"))).toBe(coupangSearchAffiliateUrl("電鍋"));
   });
 
-  it("wraps visitor search links only for the four shops", () => {
-    for (const id of ["momo", "yahoo", "kingstone", "rakuten"] as const) {
+  it("wraps visitor search links only for the three shops", () => {
+    for (const id of ["momo", "yahoo", "rakuten"] as const) {
       expect(platformSearchUrl(id, "耳機"), id).toBe(ichannels(rawSearchUrl(id, "耳機")));
     }
-    for (const id of ["pchome", "pxgo", "etmall", "sanmin", "ruten"] as const) {
+    for (const id of ["pchome", "pxgo", "etmall", "ruten"] as const) {
       expect(platformSearchUrl(id, "耳機"), id).toBe(rawSearchUrl(id, "耳機"));
     }
   });
