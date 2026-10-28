@@ -227,12 +227,12 @@ describe("the inline refresh, actually run", () => {
     expect(shops.some((html) => html.includes('"textContent":"露天"'))).toBe(true);
   });
 
-  it("keeps the bookstore out of an appliance page", async () => {
+  it("keeps an off-keyword row out of a live refresh", async () => {
     const appliance: KPageData = { ...page(), keyword: "除濕機", slug: "chushiji", category: "家電" };
     const harness = mount(scriptOf(renderKPage(appliance)), async () => ({
       fetchedAt: "2026-10-28T04:00:00.000Z",
       results: [
-        { platform: "kingstone", title: "除濕機 維修 全圖解", price: 350, image: "", url: "https://www.kingstone.com.tw/book/1" },
+        { platform: "pchome", title: "除濕 專用 濾網 副廠", price: 350, image: "", url: "https://24h.pchome.com.tw/prod/A1" },
         { platform: "momo", title: "除濕機 12L", price: 3_990, image: "", url: "https://www.momoshop.com.tw/goods/1" },
       ],
     }));

@@ -1,7 +1,7 @@
 /**
  * Outbound affiliate wrapping lives here.
  * Shopee and Coupang links are rewritten with their own programs.
- * momo, Yahoo 奇摩購物中心, 金石堂 and 樂天 go through the 通路王 Deep Link.
+ * momo, Yahoo 奇摩購物中心 and 樂天 go through the 通路王 Deep Link.
  * Every other shop stays unchanged.
  * Only links the visitor clicks are wrapped. Server fetches use `rawSearchUrl`.
  */
@@ -29,11 +29,10 @@ const ICHANNELS_REDIRECT_PATH = "/redirect_wa.php";
 const SHOPEE_HOST = /(^|\.)shopee\.tw$/i;
 const COUPANG_HOST = /(^|\.)coupang\.com$/i;
 
-/** Shops that 通路王 pays for: momo, Yahoo 奇摩購物中心, 金石堂, 樂天. */
+/** Shops that 通路王 pays for: momo, Yahoo 奇摩購物中心, 樂天. */
 const ICHANNELS_HOSTS: readonly RegExp[] = [
   /(^|\.)momoshop\.com\.tw$/i,
   /(^|\.)tw\.buy\.yahoo\.com$/i,
-  /(^|\.)kingstone\.com\.tw$/i,
   /(^|\.)rakuten\.com\.tw$/i,
 ];
 
@@ -128,7 +127,7 @@ export function coupangAffiliateUrl(url: string, affiliateId = coupangAffiliateI
 }
 
 /**
- * 通路王 Deep Link for momo, Yahoo 奇摩購物中心, 金石堂 and 樂天.
+ * 通路王 Deep Link for momo, Yahoo 奇摩購物中心 and 樂天.
  * Other hosts, http links, and links that already go through product.mchannles.com pass through.
  */
 export function ichannelsAffiliateUrl(url: string, k = ichannelsK()): string {

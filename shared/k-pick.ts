@@ -6,33 +6,15 @@ import type { PlatformId, Product } from "./types";
 /**
  * Choosing what a /k/ landing page shows.
  *
- * The shops answer a keyword with a mixed bag: a bookstore finds a title with
- * 「除濕」 in it, a marketplace pads its list with last year's accessories.
- * Taking the cheapest N of that pile produced pages that were cheap and wrong.
- * So a listing has to earn its place: its title must carry the keyword, and
- * then the platforms take turns so one shop cannot fill the whole page.
+ * The shops answer a keyword with a mixed bag: a search for 「除濕機」 also
+ * returns 「除濕盒」 and last year's accessories. Taking the cheapest N of that
+ * pile produced pages that were cheap and wrong. So a listing has to earn its
+ * place: its title must carry the keyword, and then the platforms take turns
+ * so one shop cannot fill the whole page.
  */
 
 /** How many listings a landing page shows. */
 export const K_PICK_LIMIT = 20;
-
-/**
- * Shops that sell books. A book called 「除濕機維修手冊」 is not a dehumidifier,
- * so appliance and gadget pages leave these shops out entirely.
- */
-export const BOOKSTORE_PLATFORMS: readonly PlatformId[] = ["kingstone", "sanmin"];
-
-const BOOKSTORE_BLOCKED_CATEGORIES = new Set(["家電", "3C"].map((value) => normalizeMatchText(value)));
-
-/** True for the categories where a bookstore result is always the wrong kind of thing. */
-export function bookstoresExcluded(category: string): boolean {
-  return BOOKSTORE_BLOCKED_CATEGORIES.has(normalizeMatchText(category ?? "").trim());
-}
-
-/** The shops to drop for a category. Empty means every shop may answer. */
-export function excludedForCategory(category: string): PlatformId[] {
-  return bookstoresExcluded(category) ? [...BOOKSTORE_PLATFORMS] : [];
-}
 
 /** One search term and every spelling it may appear under (synonym rows included). */
 export interface MatchToken {
@@ -88,7 +70,7 @@ export interface PickOptions {
   keyword: string;
   /** How many listings the page wants. Fewer are returned when there are fewer matches. */
   limit?: number;
-  /** Shops that may not appear at all, such as bookstores on an appliance page. */
+  /** Shops that may not appear at all. */
   excludePlatforms?: readonly PlatformId[];
   /** Round-robin order. Shops left out of it keep taking turns after the listed ones. */
   platformOrder?: readonly PlatformId[];

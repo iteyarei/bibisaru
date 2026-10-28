@@ -187,7 +187,7 @@ describe("topProducts", () => {
   it("drops listings whose title does not carry the keyword", () => {
     const kept = topProducts(
       [
-        product({ platform: "kingstone", title: "除濕 技術手冊", price: 159 }),
+        product({ platform: "pchome", title: "除濕 專用 濾網", price: 159 }),
         product({ platform: "momo", title: "除濕機 12L", price: 699 }),
       ],
       "除濕機",

@@ -1,7 +1,6 @@
 import { searchCoupangPartners } from "../../shared/coupang-api";
 import {
   etmallProducts,
-  kingstoneProducts,
   momoProducts,
   normalizePchome,
   normalizeShopee,
@@ -9,7 +8,6 @@ import {
   rakutenProducts,
   rutenProducts,
   rutenSearchIds,
-  sanminProducts,
   yahooProducts,
 } from "../../shared/normalize";
 import { callFetchProxy, fetchProxiedShop, readProxyConfig } from "../../shared/proxy";
@@ -239,32 +237,6 @@ const fetchEtmall: PlatformFetcher = (query) =>
     return ok("etmall", query, products);
   });
 
-const fetchKingstone: PlatformFetcher = (query) =>
-  scrape("kingstone", query, async (fresh) => {
-    const response = await request(
-      rawSearchUrl("kingstone", query),
-      { ...DOCUMENT_HEADERS, referer: "https://www.kingstone.com.tw/", "sec-fetch-site": "same-origin" },
-      { fresh },
-    );
-    if (!response.ok) return httpFailure("kingstone", query, response.status);
-    const products = kingstoneProducts(response.text);
-    if (!products) return parseFailure("kingstone", query);
-    return ok("kingstone", query, products);
-  });
-
-const fetchSanmin: PlatformFetcher = (query) =>
-  scrape("sanmin", query, async (fresh) => {
-    const response = await request(
-      rawSearchUrl("sanmin", query),
-      { ...DOCUMENT_HEADERS, referer: "https://www.sanmin.com.tw/", "sec-fetch-site": "same-origin" },
-      { fresh },
-    );
-    if (!response.ok) return httpFailure("sanmin", query, response.status);
-    const products = sanminProducts(response.text);
-    if (!products) return parseFailure("sanmin", query);
-    return ok("sanmin", query, products);
-  });
-
 export const fetchRakutenDirect: PlatformFetcher = (query) =>
   scrape("rakuten", query, async (fresh) => {
     const response = await request(
@@ -344,8 +316,6 @@ export const fetchers: Record<PlatformId, PlatformFetcher> = {
   shopee: fetchShopee,
   pxgo: fetchPxgo,
   etmall: fetchEtmall,
-  kingstone: fetchKingstone,
-  sanmin: fetchSanmin,
   rakuten: fetchRakuten,
   ruten: fetchRuten,
 };

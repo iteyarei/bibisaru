@@ -31,8 +31,6 @@ export const RETRIED_PLATFORMS: readonly PlatformId[] = [
   "shopee",
   "pxgo",
   "etmall",
-  "kingstone",
-  "sanmin",
   "rakuten",
   "ruten",
 ];

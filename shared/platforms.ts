@@ -9,8 +9,6 @@ export const PLATFORM_IDS = [
   "shopee",
   "pxgo",
   "etmall",
-  "kingstone",
-  "sanmin",
   "rakuten",
   "ruten",
 ] as const;
@@ -31,8 +29,6 @@ export const PLATFORMS: readonly PlatformMeta[] = [
   { id: "shopee", name: "蝦皮", color: "#EE4D2D" },
   { id: "pxgo", name: "全聯", color: "#1B4F8A" },
   { id: "etmall", name: "東森", color: "#C2410C" },
-  { id: "kingstone", name: "金石堂", color: "#A16207" },
-  { id: "sanmin", name: "三民", color: "#1D4ED8" },
   { id: "rakuten", name: "樂天", color: "#BF0000" },
   { id: "ruten", name: "露天", color: "#0F766E" },
 ];
@@ -65,10 +61,6 @@ export function rawSearchUrl(id: PlatformId, query: string): string {
       return `https://pxbox.es.pxmart.com.tw/search/result?keyword=${q}`;
     case "etmall":
       return `https://www.etmall.com.tw/Search?keyword=${q}`;
-    case "kingstone":
-      return `https://www.kingstone.com.tw/search/key/${q}`;
-    case "sanmin":
-      return `https://www.sanmin.com.tw/search/index/?ct=K&k=${q}`;
     case "rakuten":
       return `https://www.rakuten.com.tw/search/${q}/`;
     case "ruten":

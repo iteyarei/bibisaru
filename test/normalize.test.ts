@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { applyAffiliate, shopeeAffiliateUrl } from "../shared/affiliate";
 import { filterBySearchTerms } from "../shared/filter";
 import {
-  kingstoneProducts,
   normalizeCoupang,
   normalizeEtmall,
   normalizeMomo,
@@ -13,7 +12,6 @@ import {
   rakutenProducts,
   rutenProducts,
   rutenSearchIds,
-  sanminProducts,
 } from "../shared/normalize";
 import { parsePrice } from "../shared/text";
 import type { Product } from "../shared/types";
@@ -344,50 +342,6 @@ describe("newer storefronts", () => {
       },
     });
     expect(et.map((product) => product.title)).toEqual(["有貨"]);
-
-    const kingstone = kingstoneProducts(`
-      <div class="displayunit"><h3 class="pdnamebox"><a href="/basic/1/">有貨</a></h3><span>特價<b>100</b>元</span>加入購物車</div>
-      <div class="displayunit"><h3 class="pdnamebox"><a href="/basic/2/">售完</a></h3><span>特價<b>90</b>元</span>貨到通知</div>`);
-    expect(kingstone?.map((product) => product.title)).toEqual(["有貨"]);
-
-    const sanmin = sanminProducts(`
-      <div class="sProduct"><a href="/product/index/1"><h3>有貨</h3></a><span class="Price ">100</span><div class="Stock">庫存：2</div></div>
-      <div class="sProduct"><a href="/product/index/2"><h3>售完</h3></a><span class="Price ">80</span><div class="Stock">無庫存</div></div>`);
-    expect(sanmin?.map((product) => product.title)).toEqual(["有貨"]);
-  });
-
-  it("reads 金石堂 sale price from the result card", () => {
-    const html = `
-      <div class="displayunit">
-        <img src="https://cdn.kingstone.com.tw/a.jpg" alt="惠普耳機">
-        <h3 class="pdnamebox"><a href="/basic/3030000102785/?lid=search">惠普耳機</a></h3>
-        <span>特價<b>699</b>元</span>
-      </div>`;
-    expect(kingstoneProducts(html)?.[0]).toMatchObject({
-      platform: "kingstone",
-      title: "惠普耳機",
-      price: 699,
-      url: `https://product.mchannles.com/redirect_wa.php?k=2IsZi&uid1=bibisaru&tourl=${encodeURIComponent("https://www.kingstone.com.tw/basic/3030000102785/")}`,
-    });
-    expect(kingstoneProducts("<html></html>")).toBeNull();
-  });
-
-  it("prefers 三民 discount price over list price", () => {
-    const html = `
-      <div class="sProduct">
-        <a href="/product/index/004113511"><h3>BIDENUO耳機</h3></a>
-        <img data-src="https://cdnec.sanmin.com.tw/product_images/677/a.jpg" />
-        <span class="ListPrice">定價：600 元</span>
-        <span class="Price ">360</span>
-      </div>
-      <div class="sProduct">
-        <a href="/product/index/004100001"><h3>只有定價</h3></a>
-        <span class="ListPrice">定價：200 元</span>
-      </div>`;
-    const products = sanminProducts(html);
-    expect(products?.map((product) => product.price)).toEqual([360, 200]);
-    expect(products?.[0]?.url).toBe("https://www.sanmin.com.tw/product/index/004113511");
-    expect(sanminProducts("<html>no list</html>")).toBeNull();
   });
 });
 

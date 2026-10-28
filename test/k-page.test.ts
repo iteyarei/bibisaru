@@ -209,7 +209,7 @@ describe("progressive enhancement script", () => {
 
   it("refreshes from /api/search with the same platform list", () => {
     expect(script).toContain("/api/search?q=");
-    expect(script).toContain("momo,pchome,yahoo,coupang,shopee,pxgo,etmall,kingstone,sanmin,rakuten,ruten");
+    expect(script).toContain("momo,pchome,yahoo,coupang,shopee,pxgo,etmall,rakuten,ruten");
     expect(script).toContain('"limit":20');
   });
 

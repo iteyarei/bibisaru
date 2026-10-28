@@ -217,8 +217,6 @@ describe("keyword chips and query", () => {
       "shopee",
       "pxgo",
       "etmall",
-      "kingstone",
-      "sanmin",
       "rakuten",
       "ruten",
     ]);

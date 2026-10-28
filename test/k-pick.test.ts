@@ -1,15 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
-  BOOKSTORE_PLATFORMS,
-  bookstoresExcluded,
   compactText,
-  excludedForCategory,
   isRelevantTitle,
   K_PICK_LIMIT,
   matchPlan,
   pickKProducts,
   relevanceRank,
 } from "../shared/k-pick";
+import { PLATFORM_IDS } from "../shared/platforms";
 import type { PlatformId, Product } from "../shared/types";
 
 function product(over: Partial<Product> = {}): Product {
@@ -83,11 +81,11 @@ describe("relevanceRank", () => {
 });
 
 describe("pickKProducts relevance", () => {
-  it("drops a bookstore title that only contains 除濕, and keeps the real machines", () => {
+  it("drops a title that only contains 除濕, and keeps the real machines", () => {
     const picked = pickKProducts(
       [
-        product({ platform: "kingstone", title: "果蔬采後處理機械設備及生產線設計（除濕篇）", price: 159, rank: 0 }),
-        product({ platform: "sanmin", title: "除濕 與 乾燥 技術手冊", price: 320, rank: 1 }),
+        product({ platform: "pchome", title: "除濕 專用 濾網 副廠", price: 159, rank: 0 }),
+        product({ platform: "ruten", title: "除濕 盒 補充包", price: 320, rank: 1 }),
         product({ platform: "momo", title: "【KINYO】迷你智能除濕機(DHM-3250)", price: 1_121, rank: 0 }),
         product({ platform: "momo", title: "【SHARP 夏普】6公升 高效除濕機(DW-WL6NT-W)", price: 3_990, rank: 1 }),
         product({ platform: "pchome", title: "SAMPO聲寶 6L簡約輕巧除濕機 AD-S512T", price: 4_490, rank: 0 }),
@@ -97,8 +95,8 @@ describe("pickKProducts relevance", () => {
     );
 
     expect(titles(picked).every((title) => title.includes("除濕機"))).toBe(true);
-    expect(titles(picked).some((title) => title.includes("果蔬采後處理"))).toBe(false);
-    expect(titles(picked).some((title) => title.includes("乾燥 技術"))).toBe(false);
+    expect(titles(picked).some((title) => title.includes("濾網"))).toBe(false);
+    expect(titles(picked).some((title) => title.includes("補充包"))).toBe(false);
     expect(picked).toHaveLength(4);
     expect(picked[0].price).toBe(699);
   });
@@ -187,7 +185,7 @@ describe("pickKProducts platform spread", () => {
     const picked = pickKProducts(
       [
         ...Array.from({ length: 5 }, (_, i) => product({ platform: "momo", title: `除濕機 第${i + 1}款`, price: 2_000 + i })),
-        ...Array.from({ length: 30 }, (_, i) => product({ platform: "kingstone", title: `除濕 理論 第${i}冊`, price: 100 + i })),
+        ...Array.from({ length: 30 }, (_, i) => product({ platform: "pchome", title: `除濕 專用 濾網 第${i}款`, price: 100 + i })),
       ],
       { keyword: "除濕機" },
     );
@@ -225,10 +223,10 @@ describe("pickKProducts filtering and order", () => {
   it("honours excludePlatforms", () => {
     const picked = pickKProducts(
       [
-        product({ platform: "kingstone", title: "除濕機 使用手冊", price: 199 }),
+        product({ platform: "ruten", title: "除濕機 二手 9 成新", price: 199 }),
         product({ platform: "momo", title: "除濕機 12L", price: 3_990 }),
       ],
-      { keyword: "除濕機", excludePlatforms: ["kingstone"] },
+      { keyword: "除濕機", excludePlatforms: ["ruten"] },
     );
     expect(picked.map((item) => item.platform)).toEqual(["momo"]);
   });
@@ -260,30 +258,44 @@ describe("pickKProducts filtering and order", () => {
   });
 });
 
-describe("bookstores", () => {
-  it("are kingstone and sanmin", () => {
-    expect([...BOOKSTORE_PLATFORMS].sort()).toEqual(["kingstone", "sanmin"]);
+describe("platform set", () => {
+  it("asks the nine remaining shops and nothing else", () => {
+    expect([...PLATFORM_IDS]).toEqual([
+      "momo",
+      "pchome",
+      "yahoo",
+      "coupang",
+      "shopee",
+      "pxgo",
+      "etmall",
+      "rakuten",
+      "ruten",
+    ]);
   });
 
-  it("stay out of appliance and gadget pages", () => {
-    expect(bookstoresExcluded("家電")).toBe(true);
-    expect(bookstoresExcluded("3C")).toBe(true);
-    expect(excludedForCategory("家電")).toEqual(["kingstone", "sanmin"]);
+  it("never returns a row from a shop outside the set, even a perfect title match", () => {
+    // Cached responses and archived snapshots can still carry a platform id
+    // that is not in the union, so the picker has to survive one.
+    const legacy = ["kingstone", "sanmin"] as unknown as PlatformId[];
+    const stale = legacy.map((platform, index) =>
+      product({ platform, title: `除濕機 12L 第${index}款`, price: 100 + index, rank: 0 }),
+    );
+    const picked = pickKProducts([...stale, product({ platform: "momo", title: "除濕機 12L", price: 3_990 })], {
+      keyword: "除濕機",
+    });
+    expect(picked).toHaveLength(1);
+    expect(picked[0].platform).toBe("momo");
   });
 
-  it("may answer a living or a food page", () => {
-    expect(bookstoresExcluded("生活")).toBe(false);
-    expect(bookstoresExcluded("食品")).toBe(false);
-    expect(excludedForCategory("生活")).toEqual([]);
-    expect(bookstoresExcluded("")).toBe(false);
-  });
-
-  it("keeps a bookstore out of a real appliance page end to end", () => {
-    const products = [
-      product({ platform: "kingstone", title: "除濕機 維修 全圖解", price: 350, rank: 0 }),
-      product({ platform: "momo", title: "除濕機 12L", price: 3_990, rank: 0 }),
-    ];
-    expect(pickKProducts(products, { keyword: "除濕機", excludePlatforms: excludedForCategory("家電") })).toHaveLength(1);
-    expect(pickKProducts(products, { keyword: "除濕機", excludePlatforms: excludedForCategory("生活") })).toHaveLength(2);
+  it("only ever returns rows from those shops", () => {
+    const picked = pickKProducts(
+      [
+        product({ platform: "momo", title: "除濕機 12L", price: 3_990, rank: 0 }),
+        product({ platform: "ruten", title: "除濕機 二手", price: 1_500, rank: 0 }),
+      ],
+      { keyword: "除濕機" },
+    );
+    expect(picked).toHaveLength(2);
+    for (const item of picked) expect(PLATFORM_IDS).toContain(item.platform);
   });
 });

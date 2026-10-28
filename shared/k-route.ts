@@ -1,5 +1,5 @@
 import { HOT_KEYWORDS } from "./hot-keywords";
-import { excludedForCategory, pickKProducts } from "./k-pick";
+import { pickKProducts } from "./k-pick";
 import { snapshotDate, snapshotForSlug, type KSnapshot } from "./k-snapshots";
 import { scrapedShopFailed } from "./reliability";
 import { K_PAGE_ITEMS, renderKNotFound, renderKOverview, renderKPage, type KPageData } from "./k-page";
@@ -33,7 +33,7 @@ function remember(key: string, body: SearchResponse, now: number): void {
 export interface TopProductOptions {
   /** How many listings the page wants. */
   limit?: number;
-  /** Shops that must not appear, such as bookstores on an appliance page. */
+  /** Shops that must not appear on this page. */
   excludePlatforms?: readonly PlatformId[];
   /** Round-robin order. Defaults to the canonical platform order. */
   platformOrder?: readonly PlatformId[];
@@ -44,7 +44,7 @@ export interface TopProductOptions {
  * spread across shops, then sorted cheapest first for the reader.
  *
  * It used to be "cheapest N of everything the shops sent back", which is how a
- * page titled 除濕機 ended up listing NT$159 books with 除濕 in the title.
+ * page titled 除濕機 ended up listing a NT$159 除濕盒 instead of a machine.
  */
 export function topProducts(
   results: readonly Product[],
@@ -110,9 +110,7 @@ export async function handleKPath(options: KRouteOptions): Promise<KResult> {
   if (!hot) {
     const snapshot = snapshotForSlug(slug, options.snapshots);
     const archivedCategory = snapshot?.category ?? "其他";
-    const products = topProducts(snapshot?.products ?? [], keyword, {
-      excludePlatforms: excludedForCategory(archivedCategory),
-    });
+    const products = topProducts(snapshot?.products ?? [], keyword);
     const data: KPageData = {
       keyword,
       slug,
@@ -154,7 +152,7 @@ export async function handleKPath(options: KRouteOptions): Promise<KResult> {
     slug,
     category: hot.category,
     reason: hot.reason,
-    products: topProducts(body?.results ?? [], keyword, { excludePlatforms: excludedForCategory(hot.category) }),
+    products: topProducts(body?.results ?? [], keyword),
     platforms: body?.platforms ?? [],
     fetchedAt: body ? new Date(body.fetchedAt) : now,
   };

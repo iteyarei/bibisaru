@@ -9,7 +9,7 @@ import {
   SITE_ORIGIN,
   slugForKeyword,
 } from "./k-slugs";
-import { excludedForCategory, matchPlan } from "./k-pick";
+import { matchPlan } from "./k-pick";
 import { PLATFORM_IDS, PLATFORMS, platformById } from "./platforms";
 import type { PlatformReport, Product } from "./types";
 
@@ -129,7 +129,7 @@ export function kPageDescription(data: KPageData): string {
   const { keyword, products } = data;
   const shops = topPlatformNames(products, data.platforms);
   if (!products.length) {
-    return `${keyword} 的即時比價頁：一次搜尋 momo、PChome、Yahoo 奇摩、酷澎、蝦皮、全聯、東森、金石堂、三民、樂天、露天，把價格由低到高排好。目前各賣場暫時沒有回傳商品，可以直接點進去看最新價格。`;
+    return `${keyword} 的即時比價頁：一次搜尋 momo、PChome、Yahoo 奇摩、酷澎、蝦皮、全聯、東森、樂天、露天，把價格由低到高排好。目前各賣場暫時沒有回傳商品，可以直接點進去看最新價格。`;
   }
   const low = products[0].price;
   const high = products[products.length - 1].price;
@@ -270,7 +270,7 @@ ${options.script ?? ""}
  * looks final), swaps in the live list and the live query time on success, and
  * on failure keeps the snapshot while saying how old it is.
  */
-function refreshScript(keyword: string, snapshot: string, category = ""): string {
+function refreshScript(keyword: string, snapshot: string): string {
   const plan = matchPlan(keyword);
   const config = scriptJson({
     q: keyword,
@@ -278,11 +278,10 @@ function refreshScript(keyword: string, snapshot: string, category = ""): string
     limit: K_PAGE_ITEMS,
     snapshot,
     names: Object.fromEntries(PLATFORMS.map((platform) => [platform.id, platform.name])),
-    // The same relevance rule the server used, so the refresh cannot reintroduce
-    // the bookstore rows or the last-generation accessories it just dropped.
+    // The same relevance rule the server used, so the refresh cannot
+    // reintroduce the last-generation accessories it just dropped.
     phrase: plan.phrase,
     forms: plan.tokens.map((token) => [...token.forms]),
-    exclude: excludedForCategory(category),
   });
   return `<script>
 (function(){
@@ -388,7 +387,6 @@ function refreshScript(keyword: string, snapshot: string, category = ""): string
     results.forEach(function(p, i){
       if (!p || typeof p.price !== "number" || !isFinite(p.price) || p.price <= 0) return;
       if (typeof p.title !== "string" || !p.title.replace(/\\s+/g, "")) return;
-      if (cfg.exclude.indexOf(p.platform) >= 0) return;
       var r = rankOf(p.title);
       if (r > 1) return;
       var print = p.platform + "|" + fold(p.title) + "|" + p.price;
@@ -491,7 +489,7 @@ ${introParagraph(data)}
     canonical,
     body,
     extraHead: `${structuredData(data, canonical)}\n`,
-    script: refreshScript(data.keyword, snapshot, data.category),
+    script: refreshScript(data.keyword, snapshot),
   });
 }
 
