@@ -171,23 +171,38 @@ describe("topProducts", () => {
   });
 
   it("drops listings without a usable price or title", () => {
-    const kept = topProducts([
-      product({ price: 0 }),
-      product({ price: Number.NaN }),
-      product({ title: "   " }),
-      product({ price: 500, title: "ok" }),
-    ]);
+    const kept = topProducts(
+      [
+        product({ price: 0 }),
+        product({ price: Number.NaN }),
+        product({ title: "   " }),
+        product({ price: 500, title: "保暖 小物" }),
+      ],
+      "保暖",
+    );
     expect(kept).toHaveLength(1);
-    expect(kept[0].title).toBe("ok");
+    expect(kept[0].title).toBe("保暖 小物");
   });
 
-  it("sorts by price and then by the shop's own rank, and caps the list", () => {
-    const many = Array.from({ length: 30 }, (_, i) => product({ price: 500 - i, rank: i, title: `p${i}` }));
-    const kept = topProducts(many);
-    expect(kept).toHaveLength(18);
-    // Cheapest first: the 30-item list runs 500 down to 471, so the page keeps 471–488.
+  it("drops listings whose title does not carry the keyword", () => {
+    const kept = topProducts(
+      [
+        product({ platform: "kingstone", title: "除濕 技術手冊", price: 159 }),
+        product({ platform: "momo", title: "除濕機 12L", price: 699 }),
+      ],
+      "除濕機",
+    );
+    expect(kept).toHaveLength(1);
+    expect(kept[0].price).toBe(699);
+  });
+
+  it("sorts by price, then by the shop's own rank, and caps the list", () => {
+    const many = Array.from({ length: 30 }, (_, i) => product({ price: 500 - i, rank: i, title: `保暖 小物 ${i}` }));
+    const kept = topProducts(many, "保暖");
+    expect(kept).toHaveLength(20);
+    // Cheapest first: the 30-item list runs 500 down to 471, so the page keeps 471–490.
     expect(kept[0].price).toBe(471);
-    expect(kept[17].price).toBe(488);
+    expect(kept[19].price).toBe(490);
   });
 });
 

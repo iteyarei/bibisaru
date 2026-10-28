@@ -1,9 +1,10 @@
 import { HOT_KEYWORDS } from "./hot-keywords";
+import { excludedForCategory, pickKProducts } from "./k-pick";
 import { snapshotDate, snapshotForSlug, type KSnapshot } from "./k-snapshots";
 import { scrapedShopFailed } from "./reliability";
 import { K_PAGE_ITEMS, renderKNotFound, renderKOverview, renderKPage, type KPageData } from "./k-page";
 import { resolveKPath } from "./k-slugs";
-import type { Product, SearchResponse } from "./types";
+import type { PlatformId, Product, SearchResponse } from "./types";
 
 /**
  * Same edge window as /api/search, but the browser always revalidates: a reader
@@ -29,15 +30,33 @@ function remember(key: string, body: SearchResponse, now: number): void {
   reuse.set(key, { at: now, body });
 }
 
-/** Cheapest first, then the shop's own relevance. Keeps the page order stable. */
-export function topProducts(results: readonly Product[], limit = K_PAGE_ITEMS): Product[] {
-  return [...results]
-    .filter(
-      (product) =>
-        Number.isFinite(product.price) && product.price > 0 && typeof product.title === "string" && product.title.trim() !== "",
-    )
-    .sort((a, b) => a.price - b.price || a.rank - b.rank)
-    .slice(0, limit);
+export interface TopProductOptions {
+  /** How many listings the page wants. */
+  limit?: number;
+  /** Shops that must not appear, such as bookstores on an appliance page. */
+  excludePlatforms?: readonly PlatformId[];
+  /** Round-robin order. Defaults to the canonical platform order. */
+  platformOrder?: readonly PlatformId[];
+}
+
+/**
+ * What one /k/ page shows: only listings whose title really carries the keyword,
+ * spread across shops, then sorted cheapest first for the reader.
+ *
+ * It used to be "cheapest N of everything the shops sent back", which is how a
+ * page titled 除濕機 ended up listing NT$159 books with 除濕 in the title.
+ */
+export function topProducts(
+  results: readonly Product[],
+  keyword: string,
+  options: TopProductOptions = {},
+): Product[] {
+  return pickKProducts(results, {
+    keyword,
+    limit: options.limit ?? K_PAGE_ITEMS,
+    excludePlatforms: options.excludePlatforms ?? [],
+    platformOrder: options.platformOrder,
+  });
 }
 
 export interface KResult {
@@ -90,11 +109,14 @@ export async function handleKPath(options: KRouteOptions): Promise<KResult> {
   // it was captured, and the browser-side refresh still looks for live prices.
   if (!hot) {
     const snapshot = snapshotForSlug(slug, options.snapshots);
-    const products = topProducts(snapshot?.products ?? []);
+    const archivedCategory = snapshot?.category ?? "其他";
+    const products = topProducts(snapshot?.products ?? [], keyword, {
+      excludePlatforms: excludedForCategory(archivedCategory),
+    });
     const data: KPageData = {
       keyword,
       slug,
-      category: snapshot?.category ?? "其他",
+      category: archivedCategory,
       reason: "",
       archived: true,
       products,
@@ -132,7 +154,7 @@ export async function handleKPath(options: KRouteOptions): Promise<KResult> {
     slug,
     category: hot.category,
     reason: hot.reason,
-    products: topProducts(body?.results ?? []),
+    products: topProducts(body?.results ?? [], keyword, { excludePlatforms: excludedForCategory(hot.category) }),
     platforms: body?.platforms ?? [],
     fetchedAt: body ? new Date(body.fetchedAt) : now,
   };

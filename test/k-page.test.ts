@@ -110,7 +110,7 @@ describe("landing page body", () => {
 
   it("puts a prominent live-search button right under the intro", () => {
     expect(html).toContain('<a class="cta" href="/?q=%E9%99%A4%E6%BF%95%E6%A9%9F">看即時比價</a>');
-    // Above the list, so it is reachable without scrolling past 18 listings.
+    // Above the list, so it is reachable without scrolling past 20 listings.
     expect(html.indexOf('class="cta"')).toBeLessThan(html.indexOf('id="list"'));
   });
 
@@ -210,7 +210,7 @@ describe("progressive enhancement script", () => {
   it("refreshes from /api/search with the same platform list", () => {
     expect(script).toContain("/api/search?q=");
     expect(script).toContain("momo,pchome,yahoo,coupang,shopee,pxgo,etmall,kingstone,sanmin,rakuten,ruten");
-    expect(script).toContain('"limit":18');
+    expect(script).toContain('"limit":20');
   });
 
   it("starts as soon as the document is ready, never waiting on a click", () => {
