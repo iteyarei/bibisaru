@@ -198,7 +198,7 @@ npx wrangler secret put COUPANG_SECRET_KEY --config workers/fetch-proxy/wrangler
 | `lunar-new-year` | 農曆新年 | 農曆 1/1 |
 | `lantern` | 元宵 | 農曆 1/15 |
 | `dragon-boat` | 端午 | 農曆 5/5 |
-| `ghost-festival` | 中元 | 農曆 7/15 |
+| `ghost-festival` | 中元普渡 | 農曆 7/15 |
 | `mid-autumn` | 中秋 | 農曆 8/15 |
 | `halloween` | 萬聖節 | 每年 10/31 |
 | `double-11` | 雙 11 購物節 | 每年 11/11 |

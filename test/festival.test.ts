@@ -119,7 +119,7 @@ describe("festivalOn for lunar festivals", () => {
   it("gives ghost-festival the same D-5 to D window", () => {
     const window = {
       key: "ghost-festival",
-      label: "中元節",
+      label: "中元普渡",
       startDate: "2026-08-22",
       endDate: "2026-08-27",
     };
@@ -369,7 +369,7 @@ describe("the label text", () => {
       "lunar-new-year": "新年快樂",
       lantern: "元宵節快樂",
       "dragon-boat": "端午節快樂",
-      "ghost-festival": "中元節",
+      "ghost-festival": "中元普渡",
       "mid-autumn": "中秋節快樂",
       halloween: "萬聖節快樂",
       "double-11": "雙11購物節",
