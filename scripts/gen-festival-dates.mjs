@@ -25,6 +25,7 @@ const LUNAR_FESTIVALS = [
   ["lunar-new-year", 1, 1],
   ["lantern", 1, 15],
   ["dragon-boat", 5, 5],
+  ["ghost-festival", 7, 15],
   ["mid-autumn", 8, 15],
 ];
 
@@ -47,8 +48,8 @@ try {
 }
 
 if (previous === text) {
-  console.log(`festival-dates.json 沒有變動（${FIRST_YEAR}-${LAST_YEAR}，每年 4 個農曆節慶）。`);
+  console.log(`festival-dates.json 沒有變動（${FIRST_YEAR}-${LAST_YEAR}，每年 5 個農曆節慶）。`);
 } else {
   writeFileSync(OUT, text);
-  console.log(`已寫入 shared/festival-dates.json：${FIRST_YEAR}-${LAST_YEAR}，每年 4 個農曆節慶。`);
+  console.log(`已寫入 shared/festival-dates.json：${FIRST_YEAR}-${LAST_YEAR}，每年 5 個農曆節慶。`);
 }

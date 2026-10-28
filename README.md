@@ -198,21 +198,28 @@ npx wrangler secret put COUPANG_SECRET_KEY --config workers/fetch-proxy/wrangler
 | `lunar-new-year` | 農曆新年 | 農曆 1/1 |
 | `lantern` | 元宵 | 農曆 1/15 |
 | `dragon-boat` | 端午 | 農曆 5/5 |
+| `ghost-festival` | 中元普渡 | 農曆 7/15 |
 | `mid-autumn` | 中秋 | 農曆 8/15 |
 | `halloween` | 萬聖節 | 每年 10/31 |
+| `double-11` | 雙 11 購物節 | 每年 11/11 |
 | `christmas` | 聖誕節 | 每年 12/25 |
 
-農曆節慶的國曆日期是事先算好的表：`shared/festival-dates.json`，涵蓋 2025-2045。改表要跑
+農曆節慶（新年、元宵、端午、中元、中秋，共 5 個）的國曆日期是事先算好的表：
+`shared/festival-dates.json`，涵蓋 2025-2045。改表要跑
 `npm run festival:dates` 重新產生，`test/festival.test.ts` 會用 `lunar-javascript` 再算一次比對，
 表跟庫不一致就會紅。`lunar-javascript` 只是 devDependency，**前端執行時只讀 JSON，不會 import 它**。
 超出 2045 的年份回 `null`（當天沒有節慶），不會拋錯。
 
 ### 換圖
 
-圖放進 `src/assets/festivals/`，檔名 `bibihou-<key>-1024.png`（例如 `bibihou-halloween-1024.png`）。
+圖放進 `src/assets/festivals/`，檔名 `bibihou-<key>-512.png`（例如 `bibihou-halloween-512.png`）。
 `src/festival-mascot.ts` 用 `import.meta.glob` 依檔名比對，**丟進去、重新部署就會自動生效**，
 不用改任何程式。目錄是空的時候就算當天有節慶也不會切換，所以不會破圖；圖載入失敗也會退回
-`/mascot.png`。只認 1024 那張，若同時有 512 或 icon 仍然以 1024 為主。
+`/mascot.png`。
+
+用 512 是因為網站上吉祥物最大只畫到 168px（header 是 56px），1024 那張在畫面上看不出差別，
+九張卻要 6MB、512 只要 2MB。挑圖時 512 優先，沒有 512 才退回 1024，所以留著舊的 1024 不會壞。
+icon-180 是給 App 圖示用的，網頁用不到。
 
 ### 開關
 

@@ -1,11 +1,12 @@
 /**
  * 節慶吉祥圖的執行時接線。
  *
- * 圖放在 `src/assets/festivals/`，命名 `bibihou-<key>-1024.png`。
+ * 圖放在 `src/assets/festivals/`，命名 `bibihou-<key>-512.png`。
  * 這裡用 `import.meta.glob` 把目錄裡的檔名收集起來，再依檔名判斷哪個節慶有圖：
  *   - 目錄空的時候 glob 回空物件，就算今天有節慶也**不切換**，所以不會破圖；
  *   - 小珊把圖丟進去、重新部署，圖就自動生效，不用改任何程式。
- * 只認 1024 那張；之後若多了 512 或 icon，仍然以 1024 為主。
+ * 512 優先，沒有 512 才退回 1024：畫面上吉祥物最大只有 168px，兩者看不出差別，
+ * 但九張 512 只要 2MB，1024 要 6MB。
  */
 import { activeFestivalImage, festivalLabelText, type FestivalWindow } from "../shared/festival";
 import { FESTIVAL_SETTINGS } from "../shared/festival-config";
