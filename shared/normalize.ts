@@ -176,10 +176,43 @@ function momoDrafts(list: unknown[]): Product[] {
   );
 }
 
+/** The suffix momo prints after a price that is only the cheapest of several specs. */
+const MOMO_FROM_PRICE = /起/;
+
+/**
+ * A 「起」 on the price means this is a multi-spec page: the number is the
+ * cheapest variant on it, not the goods. momo's brand flagship pages
+ * (`/TP/TP0008131/goodsDetail/TP00081310000028`) price a dehumidifier from 94
+ * because the same page also sells its spare filters, and `basePrice` then
+ * reads `{price:"94", strPrice:"起"}` with a `rangePrice` of 94～2,232 beside it.
+ * Quoting that number would put a NT$94 「除濕機」 at the head of the page.
+ *
+ * Only the price fields are read. 「起」 inside a title is an ordinary word, and
+ * a listing is never dropped for it.
+ */
 function momoPrice(row: Record<string, unknown>): number | null {
   const model = asRecord(row.goodsPriceModel);
   const base = asRecord(model?.basePrice);
+  const range = asRecord(model?.rangePrice);
+  if (momoFromPrice(row, base, range)) return null;
   return parsePrice(base?.price) ?? parsePrice(row.goodsPrice) ?? parsePrice(row.SALE_PRICE);
+}
+
+/** True when what momo printed is a range start rather than the price of the goods. */
+function momoFromPrice(
+  row: Record<string, unknown>,
+  base: Record<string, unknown> | null,
+  range: Record<string, unknown> | null,
+): boolean {
+  if (momoPriceSuffix(base?.strPrice)) return true;
+  // A range carries the marker itself on some pages instead of on basePrice.
+  if (momoPriceSuffix(range?.strPrice) || momoPriceSuffix(range?.minPriceStr)) return true;
+  return momoPriceSuffix(row.goodsPrice);
+}
+
+/** The marker is a one-character suffix field, so any other text is a different message. */
+function momoPriceSuffix(value: unknown): boolean {
+  return typeof value === "string" && MOMO_FROM_PRICE.test(value);
 }
 
 export function normalizeCoupang(html: string): Product[] {

@@ -78,6 +78,26 @@ function priceSpan(products: readonly Product[]): { low: number; high: number } 
   return { low: Math.min(...prices), high: Math.max(...prices) };
 }
 
+/**
+ * The listings the copy quotes its price range from: the goods shelf when the
+ * page has one, every listing when it does not.
+ *
+ * 「價格從 NT$280 到 NT$48,900」 on the iPhone page was a screen protector at
+ * one end and a phone at the other, and 「從 NT$258 起」 on the Switch page was
+ * a controller stand. The add-ons are worth listing, so they keep their own
+ * shelf; they must not set the range. 「共 N 筆」 stays the whole result count,
+ * which is why only the span reads this.
+ *
+ * A page with a single shelf (生活, 食品: no grouping at all) keeps the old
+ * behaviour, and so does one whose goods shelf somehow came out empty.
+ */
+function priceListings(data: KPageData): readonly Product[] {
+  const groups = sectionsOf(data);
+  if (groups.length < 2) return data.products;
+  const main = groups.find((group) => group.kind === "main");
+  return main && main.products.length ? main.products : data.products;
+}
+
 /** What the page actually draws: the given sections, or ones rebuilt from the list. */
 export function sectionsOf(data: KPageData): readonly KPageGroup[] {
   if (data.groups) return data.groups;
@@ -155,7 +175,7 @@ export function kPageDescription(data: KPageData): string {
   if (!products.length) {
     return `${keyword} 的即時比價頁：一次搜尋 momo、PChome、Yahoo 奇摩、酷澎、蝦皮、全聯、東森、樂天、露天，把價格由低到高排好。目前各賣場暫時沒有回傳商品，可以直接點進去看最新價格。`;
   }
-  const { low, high } = priceSpan(products);
+  const { low, high } = priceSpan(priceListings(data));
   const where = shops ? `${shops} 等平台` : "各平台";
   const range = low === high ? `均一價 ${formatTwd(low)}` : `${formatTwd(low)} 到 ${formatTwd(high)}`;
   return `${keyword} 在 ${where}共 ${products.length} 筆，價格 ${range}。比比猴把各家搜尋結果放在同一頁，由低到高排好，沒有置頂廣告，點進商品直接到原賣場。`;
@@ -167,7 +187,7 @@ function introParagraph(data: KPageData): string {
     return `<p class="lead">目前各平台暫時沒有回傳 <b>${escapeHtml(keyword)}</b> 的商品，可能是被擋或正在換季。你還是可以直接用比比猴即時搜尋再試一次，或到各賣場自己的頁面找。</p>`;
   }
   const shops = topPlatformNames(products, data.platforms);
-  const { low, high } = priceSpan(products);
+  const { low, high } = priceSpan(priceListings(data));
   const range = low === high ? `價格是 ${formatTwd(low)}` : `價格從 ${formatTwd(low)} 到 ${formatTwd(high)}`;
   const where = shops ? `${shops} 等平台` : "各平台";
   return `<p class="lead"><b>${escapeHtml(keyword)}</b> 目前在 ${escapeHtml(where)}共 ${products.length} 筆，${range}。比比猴把各家搜尋結果放在同一頁、由低到高排好，沒有置頂廣告。價格與庫存以各賣場頁面為準，點進商品就能直接到原賣場。</p>`;
