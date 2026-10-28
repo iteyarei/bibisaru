@@ -1,6 +1,7 @@
 import { fill, formatPrice, messages, unavailableNote } from "../shared/i18n";
 import { platformById } from "../shared/platforms";
 import type { PlatformReport, Product } from "../shared/types";
+import { bindMascotFallback, mascotSrc } from "./festival-mascot";
 
 const OUTBOUND_REL = "noopener nofollow sponsored";
 
@@ -17,6 +18,20 @@ function el<K extends keyof HTMLElementTagNameMap>(
   if (className) node.className = className;
   if (text !== undefined) node.textContent = text;
   return node;
+}
+
+/**
+ * 吉祥物圖。有節慶圖時用節慶版，否則就是 `/mascot.png`；
+ * 尺寸一律寫死，避免圖換掉時版面跟著跳。
+ */
+function mascotImage(size: number): HTMLImageElement {
+  const image = el("img");
+  image.src = mascotSrc();
+  image.alt = "";
+  image.width = size;
+  image.height = size;
+  bindMascotFallback(image);
+  return image;
 }
 
 function outbound(href: string, className: string, text: string): HTMLAnchorElement {
@@ -94,23 +109,14 @@ export function renderStage(
 
   if (!view.searched) {
     const intro = el("div", "empty");
-    const image = el("img");
-    image.src = "/mascot.png";
-    image.alt = "";
-    image.width = 168;
-    image.height = 168;
-    intro.append(image, el("p", "intro-title", messages.introTitle), el("p", undefined, messages.introBody));
+    intro.append(mascotImage(168), el("p", "intro-title", messages.introTitle), el("p", undefined, messages.introBody));
     root.append(intro);
     return;
   }
 
   if (!view.products.length) {
     const box = el("div", "message");
-    const image = el("img");
-    image.src = "/mascot.png";
-    image.alt = "";
-    image.width = 140;
-    image.height = 140;
+    const image = mascotImage(140);
     const copy = el("p", undefined, view.filtersHidResults ? messages.empty : messages.noData);
     const reset = el("button", "reset", messages.reset);
     reset.type = "button";

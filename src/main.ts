@@ -13,6 +13,7 @@ import { similarQuery } from "../shared/similar";
 import type { PlatformId, SearchResponse, SortMode } from "../shared/types";
 import { groupHotKeywords, HOT_KEYWORDS, hotKeywordPath } from "../shared/hot-keywords";
 import { bindClearButton } from "./clear-field";
+import { applyFestivalMascot } from "./festival-mascot";
 import { bindHotPopClose, createHotPop } from "./hot-pop";
 import { defaultPrefs, loadPrefs, savePrefs, type Prefs } from "./prefs";
 import { renderNotices, renderStage } from "./render";
@@ -410,6 +411,8 @@ searchForm.addEventListener("focusout", (event) => {
 
 renderHotKeywords();
 renderPlatforms();
+// HTML 寫死平常版吉祥物，這裡才依當天節慶換圖（沒有節慶或還沒放圖就原封不動）。
+applyFestivalMascot();
 syncExclude();
 sortSelect.value = prefs.sort;
 priceMinInput.value = prefs.priceMin === null ? "" : String(prefs.priceMin);

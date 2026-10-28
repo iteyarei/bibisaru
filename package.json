@@ -13,10 +13,12 @@
     "test": "vitest run",
     "test:live": "vitest run --config vitest.live.config.ts --reporter=verbose",
     "pages:dev": "wrangler pages dev dist --port 8788",
-    "prebuild": "node scripts/check-k-slugs.mjs"
+    "prebuild": "node scripts/check-k-slugs.mjs",
+    "festival:dates": "node scripts/gen-festival-dates.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261006.1",
+    "lunar-javascript": "^1.7.7",
     "typescript": "^5.9.3",
     "vite": "^6.3.6",
     "vitest": "^3.2.4",
