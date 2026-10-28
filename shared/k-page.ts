@@ -338,9 +338,16 @@ function refreshScript(keyword: string, category: string, snapshot: string): str
       cjkBefore: shelf.cjkBefore,
       deviceSpec: shelf.deviceSpec,
       hardware: shelf.hardware,
+      machine: shelf.machine,
+      machineSpec: shelf.machineSpec,
+      accessoryNouns: shelf.accessoryNouns,
+      capacity: shelf.capacity,
       consolePage: shelf.consolePage,
       consoleDrop: shelf.consoleDrop,
       specBracket: shelf.specBracket,
+      partBracket: shelf.partBracket,
+      partOnly: shelf.partOnly,
+      modelBefore: shelf.modelBefore,
       areaBracket: shelf.areaBracket,
       giftBracket: shelf.giftBracket,
       bonusPhrase: shelf.bonusPhrase,
@@ -359,10 +366,14 @@ function refreshScript(keyword: string, category: string, snapshot: string): str
   var gift = new RegExp(shelf.giftBracket, "g");
   var area = new RegExp(shelf.areaBracket, "g");
   var spec = new RegExp(shelf.specBracket, "g");
+  var partBracket = new RegExp(shelf.partBracket);
+  var partOnly = new RegExp(shelf.partOnly, "i");
+  var modelBefore = new RegExp(shelf.modelBefore);
   var bonus = new RegExp(shelf.bonusPhrase, "g");
   var split = new RegExp(shelf.bundleSplit);
   var cjk = new RegExp(shelf.cjkBefore);
   var device = shelf.deviceSpec ? new RegExp(shelf.deviceSpec, "iu") : null;
+  var capacity = shelf.capacity ? new RegExp(shelf.capacity, "i") : null;
   var size = new RegExp(shelf.specAfter, "i");
   var kinds = ["main", "accessories", "heat"];
   function twd(n){ return "NT$" + String(Math.round(n)).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ","); }
@@ -467,8 +478,20 @@ function refreshScript(keyword: string, category: string, snapshot: string): str
   // The name of the goods, with feature lists and bundled freebies taken out:
   // 「小米 無線吸塵器 P30(22000Pa吸力/五重濾網)」 keeps its own 濾網 out of the
   // way, while a bare 「適用 Dyson V12 濾網」 still reads as an add-on.
+  // 「…空氣清淨機 FU-J41T-W(集塵HEPA濾網)」 is the purifier naming its filter;
+  // 「適用 FU-J41T-W 集塵HEPA濾網」 is the filter. Same test as the server.
+  function withoutPartBracket(title){
+    var m = partBracket.exec(title);
+    if (!m) return title;
+    if (!partOnly.test(m[1])) return title;
+    var before = title.slice(0, m.index);
+    if (!modelBefore.test(before)) return title;
+    if (!/[\u3400-\u9fff]/.test(before)) return title;
+    if (/^(?:適用|專用|替換|通用|副廠)/.test(fold(before))) return title;
+    return before;
+  }
   function headOf(title){
-    var bare = String(title == null ? "" : title)
+    var bare = withoutPartBracket(String(title == null ? "" : title))
       .replace(gift, " ")
       .replace(area, " ")
       .replace(spec, " ")
@@ -506,7 +529,16 @@ function refreshScript(keyword: string, category: string, snapshot: string): str
     // On a console page only a title that says 主機 is the machine; a game or a
     // spare pad is 周邊 however the shop words it.
     if (shelf.consolePage && !anyWord(hay, shelf.hardware)) return "accessories";
-    return addOn(headOf(title)) ? "accessories" : "main";
+    // The machine names its own engineering, and that outranks an add-on word
+    // in the same title. A capacity or a 水箱 only counts when the title names
+    // no concrete add-on, or a filter for a 22L machine would become the machine.
+    if (anyWord(hay, shelf.machine)) return "main";
+    var head = headOf(title);
+    if (!addOn(head)) return "main";
+    var spec = anyWord(head, shelf.machineSpec) ||
+      (capacity && (capacity.test(String(title == null ? "" : title)) || capacity.test(head)));
+    if (spec && !anyWord(head, shelf.accessoryNouns)) return "main";
+    return "accessories";
   }
   function pick(results, limit){
     var byShop = {}, picked = [], seen = {}, cursors = {}, order = cfg.platforms.split(",");
