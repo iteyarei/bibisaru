@@ -201,6 +201,7 @@ npx wrangler secret put COUPANG_SECRET_KEY --config workers/fetch-proxy/wrangler
 | `ghost-festival` | 中元 | 農曆 7/15 |
 | `mid-autumn` | 中秋 | 農曆 8/15 |
 | `halloween` | 萬聖節 | 每年 10/31 |
+| `double-11` | 雙 11 購物節 | 每年 11/11 |
 | `christmas` | 聖誕節 | 每年 12/25 |
 
 農曆節慶（新年、元宵、端午、中元、中秋，共 5 個）的國曆日期是事先算好的表：

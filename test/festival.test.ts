@@ -77,6 +77,21 @@ describe("festivalOn across the new year", () => {
     });
   });
 
+  it("shows the double-11 window from 11/6 to 11/11, then drops", () => {
+    const window = {
+      key: "double-11",
+      label: "雙11購物節",
+      startDate: "2026-11-06",
+      endDate: "2026-11-11",
+    };
+    expect(festivalOn(taipeiNoon("2026-11-06"))).toEqual(window); // D-5
+    expect(festivalOn(taipeiNoon("2026-11-05"))).toBeNull(); // D-6
+    expect(festivalOn(taipeiNoon("2026-11-11"))).toEqual(window); // D
+    expect(festivalOn(taipeiNoon("2026-11-12"))).toBeNull(); // D+1
+    // 固定日期，換一年也是 11/11。
+    expect(festivalOn(taipeiNoon("2027-11-11"))?.endDate).toBe("2027-11-11");
+  });
+
   it("is not up on 12/26", () => {
     expect(festivalOn(taipeiNoon("2026-12-26"))).toBeNull();
   });
@@ -104,7 +119,7 @@ describe("festivalOn for lunar festivals", () => {
   it("gives ghost-festival the same D-5 to D window", () => {
     const window = {
       key: "ghost-festival",
-      label: "中元普渡",
+      label: "中元節",
       startDate: "2026-08-22",
       endDate: "2026-08-27",
     };
@@ -279,6 +294,7 @@ describe("image naming and lookup", () => {
     expect(festivalImageName("halloween")).toBe("bibihou-halloween-1024.png");
     expect(festivalImageName("lunar-new-year")).toBe("bibihou-lunar-new-year-1024.png");
     expect(festivalImageName("ghost-festival")).toBe("bibihou-ghost-festival-1024.png");
+    expect(festivalImageName("double-11")).toBe("bibihou-double-11-1024.png");
   });
 
   it("finds the image by file name, whatever the hashed url is", () => {
@@ -353,9 +369,10 @@ describe("the label text", () => {
       "lunar-new-year": "新年快樂",
       lantern: "元宵節快樂",
       "dragon-boat": "端午節快樂",
-      "ghost-festival": "中元普渡",
+      "ghost-festival": "中元節",
       "mid-autumn": "中秋節快樂",
       halloween: "萬聖節快樂",
+      "double-11": "雙11購物節",
       christmas: "聖誕節快樂",
     });
   });

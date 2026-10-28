@@ -17,6 +17,7 @@ export type FestivalKey =
   | "ghost-festival"
   | "mid-autumn"
   | "halloween"
+  | "double-11"
   | "christmas";
 
 export interface FestivalWindow {
@@ -42,9 +43,10 @@ export const FESTIVALS: readonly FestivalDef[] = [
   { key: "lunar-new-year", label: "新年快樂" },
   { key: "lantern", label: "元宵節快樂" },
   { key: "dragon-boat", label: "端午節快樂" },
-  { key: "ghost-festival", label: "中元普渡" },
+  { key: "ghost-festival", label: "中元節" },
   { key: "mid-autumn", label: "中秋節快樂" },
   { key: "halloween", label: "萬聖節快樂", fixed: { month: 10, day: 31 } },
+  { key: "double-11", label: "雙11購物節", fixed: { month: 11, day: 11 } },
   { key: "christmas", label: "聖誕節快樂", fixed: { month: 12, day: 25 } },
 ];
 
