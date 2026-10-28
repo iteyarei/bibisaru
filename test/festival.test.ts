@@ -97,7 +97,21 @@ describe("festivalOn for lunar festivals", () => {
     });
     expect(festivalOn(taipeiNoon("2026-03-03"))?.key).toBe("lantern");
     expect(festivalOn(taipeiNoon("2026-06-19"))?.key).toBe("dragon-boat");
+    expect(festivalOn(taipeiNoon("2026-08-27"))?.key).toBe("ghost-festival");
     expect(festivalOn(taipeiNoon("2026-09-25"))?.key).toBe("mid-autumn");
+  });
+
+  it("gives ghost-festival the same D-5 to D window", () => {
+    const window = {
+      key: "ghost-festival",
+      label: "中元普渡",
+      startDate: "2026-08-22",
+      endDate: "2026-08-27",
+    };
+    expect(festivalOn(taipeiNoon("2026-08-22"))).toEqual(window); // D-5
+    expect(festivalOn(taipeiNoon("2026-08-21"))).toBeNull(); // D-6
+    expect(festivalOn(taipeiNoon("2026-08-27"))).toEqual(window); // D
+    expect(festivalOn(taipeiNoon("2026-08-28"))).toBeNull(); // D+1
   });
 
   it("returns null past the end of the table instead of throwing", () => {
@@ -174,14 +188,27 @@ describe("the lunar date table", () => {
     ["lunar-new-year", 1, 1],
     ["lantern", 1, 15],
     ["dragon-boat", 5, 5],
+    ["ghost-festival", 7, 15],
     ["mid-autumn", 8, 15],
   ];
 
-  it("covers 2025 through 2045 with all four lunar festivals", () => {
+  it("covers 2025 through 2045 with all five lunar festivals", () => {
     const years = festivalDateYears();
     expect(years[0]).toBe(2025);
     expect(years.at(-1)).toBe(2045);
     expect(years).toHaveLength(21);
+  });
+
+  it("has every lunar key filled in for every year", () => {
+    const missing: string[] = [];
+    for (const year of festivalDateYears()) {
+      const def = (key: string): FestivalDef => FESTIVALS.find((item) => item.key === key)!;
+      for (const [key] of LUNAR) {
+        const date = festivalDate(def(key), year);
+        if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) missing.push(`${year} ${key}: ${String(date)}`);
+      }
+    }
+    expect(missing).toEqual([]);
   });
 
   it("matches lunar-javascript for every year in the table", () => {
@@ -204,18 +231,21 @@ describe("the lunar date table", () => {
         "lunar-new-year": festivalDate(def("lunar-new-year"), 2026),
         lantern: festivalDate(def("lantern"), 2026),
         "dragon-boat": festivalDate(def("dragon-boat"), 2026),
+        "ghost-festival": festivalDate(def("ghost-festival"), 2026),
         "mid-autumn": festivalDate(def("mid-autumn"), 2026),
       },
       2027: {
         "lunar-new-year": festivalDate(def("lunar-new-year"), 2027),
         lantern: festivalDate(def("lantern"), 2027),
         "dragon-boat": festivalDate(def("dragon-boat"), 2027),
+        "ghost-festival": festivalDate(def("ghost-festival"), 2027),
         "mid-autumn": festivalDate(def("mid-autumn"), 2027),
       },
       2028: {
         "lunar-new-year": festivalDate(def("lunar-new-year"), 2028),
         lantern: festivalDate(def("lantern"), 2028),
         "dragon-boat": festivalDate(def("dragon-boat"), 2028),
+        "ghost-festival": festivalDate(def("ghost-festival"), 2028),
         "mid-autumn": festivalDate(def("mid-autumn"), 2028),
       },
     }).toEqual({
@@ -223,18 +253,21 @@ describe("the lunar date table", () => {
         "lunar-new-year": "2026-02-17",
         lantern: "2026-03-03",
         "dragon-boat": "2026-06-19",
+        "ghost-festival": "2026-08-27",
         "mid-autumn": "2026-09-25",
       },
       2027: {
         "lunar-new-year": "2027-02-06",
         lantern: "2027-02-20",
         "dragon-boat": "2027-06-09",
+        "ghost-festival": "2027-08-16",
         "mid-autumn": "2027-09-15",
       },
       2028: {
         "lunar-new-year": "2028-01-26",
         lantern: "2028-02-09",
         "dragon-boat": "2028-05-28",
+        "ghost-festival": "2028-09-03",
         "mid-autumn": "2028-10-03",
       },
     });
@@ -245,6 +278,7 @@ describe("image naming and lookup", () => {
   it("names files bibihou-<key>-1024.png", () => {
     expect(festivalImageName("halloween")).toBe("bibihou-halloween-1024.png");
     expect(festivalImageName("lunar-new-year")).toBe("bibihou-lunar-new-year-1024.png");
+    expect(festivalImageName("ghost-festival")).toBe("bibihou-ghost-festival-1024.png");
   });
 
   it("finds the image by file name, whatever the hashed url is", () => {
@@ -319,6 +353,7 @@ describe("the label text", () => {
       "lunar-new-year": "新年快樂",
       lantern: "元宵節快樂",
       "dragon-boat": "端午節快樂",
+      "ghost-festival": "中元普渡",
       "mid-autumn": "中秋節快樂",
       halloween: "萬聖節快樂",
       christmas: "聖誕節快樂",

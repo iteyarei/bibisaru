@@ -198,11 +198,13 @@ npx wrangler secret put COUPANG_SECRET_KEY --config workers/fetch-proxy/wrangler
 | `lunar-new-year` | 農曆新年 | 農曆 1/1 |
 | `lantern` | 元宵 | 農曆 1/15 |
 | `dragon-boat` | 端午 | 農曆 5/5 |
+| `ghost-festival` | 中元 | 農曆 7/15 |
 | `mid-autumn` | 中秋 | 農曆 8/15 |
 | `halloween` | 萬聖節 | 每年 10/31 |
 | `christmas` | 聖誕節 | 每年 12/25 |
 
-農曆節慶的國曆日期是事先算好的表：`shared/festival-dates.json`，涵蓋 2025-2045。改表要跑
+農曆節慶（新年、元宵、端午、中元、中秋，共 5 個）的國曆日期是事先算好的表：
+`shared/festival-dates.json`，涵蓋 2025-2045。改表要跑
 `npm run festival:dates` 重新產生，`test/festival.test.ts` 會用 `lunar-javascript` 再算一次比對，
 表跟庫不一致就會紅。`lunar-javascript` 只是 devDependency，**前端執行時只讀 JSON，不會 import 它**。
 超出 2045 的年份回 `null`（當天沒有節慶），不會拋錯。
