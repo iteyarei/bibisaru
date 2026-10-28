@@ -9,6 +9,7 @@ import {
   SITE_ORIGIN,
   slugForKeyword,
 } from "./k-slugs";
+import { deriveGroups, groupPlan, type KPageGroup } from "./k-group";
 import { matchPlan } from "./k-pick";
 import { PLATFORM_IDS, PLATFORMS, platformById } from "./platforms";
 import type { PlatformReport, Product } from "./types";
@@ -41,7 +42,10 @@ h1{font-size:23px;line-height:1.35;margin:0 0 10px}
 .cta:hover,.cta:focus-visible{background:var(--teal-dark)}
 .stamp{font-size:13px;color:var(--muted);margin:0 0 16px}
 .stamp.idle{color:#a1601f}
-ul.list.loading{opacity:.45;transition:opacity .15s}
+.groups.loading{opacity:.45;transition:opacity .15s}
+.group{margin:0 0 24px}
+.group:last-child{margin-bottom:0}
+.group h2{font-size:17px;line-height:1.4;margin:0 0 10px;color:var(--ink)}
 ul.list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
 ul.list li{background:var(--card);border:1px solid var(--line);border-radius:14px}
 ul.list a{display:flex;gap:12px;padding:12px;color:inherit;text-decoration:none;align-items:center}
@@ -63,6 +67,21 @@ footer p{margin:0 0 6px}
 
 function formatTwd(amount: number): string {
   return `NT$${String(Math.round(amount)).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+}
+
+/**
+ * The cheapest and the dearest listing on the page. The sections are stacked
+ * 主商品 → 配件 → 熱敷, so neither end of the flat list is the range.
+ */
+function priceSpan(products: readonly Product[]): { low: number; high: number } {
+  const prices = products.map((product) => product.price);
+  return { low: Math.min(...prices), high: Math.max(...prices) };
+}
+
+/** What the page actually draws: the given sections, or ones rebuilt from the list. */
+export function sectionsOf(data: KPageData): readonly KPageGroup[] {
+  if (data.groups) return data.groups;
+  return deriveGroups(data.products, data.keyword, data.category);
 }
 
 /** YYYY/MM/DD in Taipei time, the date the copy puts in front of the reader. */
@@ -90,8 +109,13 @@ export interface KPageData {
   slug: string;
   category: string;
   reason: string;
-  /** Products already sorted by price, at most K_PAGE_ITEMS. Empty when every shop failed. */
+  /** Every listing on the page, flattened: 主商品, then 配件, then 熱敷. */
   products: readonly Product[];
+  /**
+   * The sections the page is drawn in, each already cheapest-first. Omitted by
+   * callers that only hold the flat list; the sections are rebuilt from it.
+   */
+  groups?: readonly KPageGroup[];
   /** One entry per shop that was asked, so copy can name the shops that answered. */
   platforms: readonly PlatformReport[];
   /** When the prices above were captured. Retired pages show this, unedited. */
@@ -131,8 +155,7 @@ export function kPageDescription(data: KPageData): string {
   if (!products.length) {
     return `${keyword} 的即時比價頁：一次搜尋 momo、PChome、Yahoo 奇摩、酷澎、蝦皮、全聯、東森、樂天、露天，把價格由低到高排好。目前各賣場暫時沒有回傳商品，可以直接點進去看最新價格。`;
   }
-  const low = products[0].price;
-  const high = products[products.length - 1].price;
+  const { low, high } = priceSpan(products);
   const where = shops ? `${shops} 等平台` : "各平台";
   const range = low === high ? `均一價 ${formatTwd(low)}` : `${formatTwd(low)} 到 ${formatTwd(high)}`;
   return `${keyword} 在 ${where}共 ${products.length} 筆，價格 ${range}。比比猴把各家搜尋結果放在同一頁，由低到高排好，沒有置頂廣告，點進商品直接到原賣場。`;
@@ -144,8 +167,7 @@ function introParagraph(data: KPageData): string {
     return `<p class="lead">目前各平台暫時沒有回傳 <b>${escapeHtml(keyword)}</b> 的商品，可能是被擋或正在換季。你還是可以直接用比比猴即時搜尋再試一次，或到各賣場自己的頁面找。</p>`;
   }
   const shops = topPlatformNames(products, data.platforms);
-  const low = products[0].price;
-  const high = products[products.length - 1].price;
+  const { low, high } = priceSpan(products);
   const range = low === high ? `價格是 ${formatTwd(low)}` : `價格從 ${formatTwd(low)} 到 ${formatTwd(high)}`;
   const where = shops ? `${shops} 等平台` : "各平台";
   return `<p class="lead"><b>${escapeHtml(keyword)}</b> 目前在 ${escapeHtml(where)}共 ${products.length} 筆，${range}。比比猴把各家搜尋結果放在同一頁、由低到高排好，沒有置頂廣告。價格與庫存以各賣場頁面為準，點進商品就能直接到原賣場。</p>`;
@@ -164,8 +186,24 @@ function productItem(product: Product, lowest: boolean): string {
   return `<li><a href="${escapeHtml(href)}" target="_blank" rel="${OUTBOUND_REL}">${inner}</a></li>`;
 }
 
-function itemList(items: readonly Product[]): string {
-  return items.map((product, index) => productItem(product, index === 0)).join("");
+/**
+ * The sections of the page: one <ul class="list"> each, with a heading only
+ * when there is more than one shelf. A single shelf keeps the old plain list.
+ *
+ * The 最低價 badge marks the cheapest listing on the whole page, which on a
+ * page of machines is the first row of the first section.
+ */
+function groupList(groups: readonly KPageGroup[]): string {
+  const heading = groups.length > 1;
+  return groups
+    .map((group, index) => {
+      const items = group.products
+        .map((product) => productItem(product, index === 0 && product === group.products[0]))
+        .join("");
+      const caption = heading ? `<h2>${escapeHtml(group.title)}</h2>` : "";
+      return `<section class="group" data-kind="${group.kind}">${caption}<ul class="list">${items}</ul></section>`;
+    })
+    .join("");
 }
 
 function structuredData(data: KPageData, canonical: string): string {
@@ -202,7 +240,7 @@ function structuredData(data: KPageData, canonical: string): string {
         return { "@type": "ListItem", position: index + 1, item };
       }),
     });
-    const prices = data.products.map((product) => product.price);
+    const { low, high } = priceSpan(data.products);
     graph.push({
       "@type": "Product",
       name: `${data.keyword} 比價`,
@@ -210,8 +248,8 @@ function structuredData(data: KPageData, canonical: string): string {
       url: canonical,
       offers: {
         "@type": "AggregateOffer",
-        lowPrice: Math.min(...prices),
-        highPrice: Math.max(...prices),
+        lowPrice: low,
+        highPrice: high,
         priceCurrency: "TWD",
         offerCount: data.products.length,
         availability: "https://schema.org/InStock",
@@ -249,7 +287,7 @@ function shell(options: {
 <link rel="icon" type="image/png" href="/icon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="/icon-180.png">
 ${options.extraHead ?? ""}<style>${K_PAGE_CSS}</style>
-<noscript><style>.list.loading{opacity:1}</style></noscript>
+<noscript><style>.groups.loading{opacity:1}</style></noscript>
 </head>
 <body>
 <header><div class="inner"><a href="/">比比猴</a><span style="color:#e6fffb;font-size:13px">猴子都會用的比價網站</span></div></header>
@@ -270,27 +308,63 @@ ${options.script ?? ""}
  * looks final), swaps in the live list and the live query time on success, and
  * on failure keeps the snapshot while saying how old it is.
  */
-function refreshScript(keyword: string, snapshot: string): string {
+function refreshScript(keyword: string, category: string, snapshot: string): string {
   const plan = matchPlan(keyword);
+  const shelf = groupPlan(keyword, category);
   const config = scriptJson({
     q: keyword,
     platforms: kPagePlatformParam(),
-    limit: K_PAGE_ITEMS,
+    limit: shelf.limits.main,
     snapshot,
     names: Object.fromEntries(PLATFORMS.map((platform) => [platform.id, platform.name])),
     // The same relevance rule the server used, so the refresh cannot
     // reintroduce the last-generation accessories it just dropped.
     phrase: plan.phrase,
     forms: plan.tokens.map((token) => [...token.forms]),
+    // And the same shelf rule, word lists and all. The page renders its
+    // sections a second time here, so the two must never disagree.
+    shelf: {
+      enabled: shelf.enabled,
+      heatEnabled: shelf.heatEnabled,
+      titles: shelf.titles,
+      limits: shelf.limits,
+      accessory: shelf.accessory,
+      heat: shelf.heat,
+      drop: shelf.drop,
+      specWord: shelf.specWord,
+      specAfter: shelf.specAfter,
+      bundlePhrases: shelf.bundlePhrases,
+      bundleSplit: shelf.bundleSplit,
+      cjkBefore: shelf.cjkBefore,
+      deviceSpec: shelf.deviceSpec,
+      hardware: shelf.hardware,
+      consolePage: shelf.consolePage,
+      consoleDrop: shelf.consoleDrop,
+      specBracket: shelf.specBracket,
+      areaBracket: shelf.areaBracket,
+      giftBracket: shelf.giftBracket,
+      bonusPhrase: shelf.bonusPhrase,
+    },
   });
   return `<script>
 (function(){
   var cfg = ${config};
-  var list = document.getElementById("list");
+  var shelf = cfg.shelf;
+  var list = document.getElementById("groups");
   var stamp = document.getElementById("stamp");
   var fresh = document.getElementById("fresh");
   var empty = document.getElementById("empty");
   if (!list) return;
+  var space = /\\s/;
+  var gift = new RegExp(shelf.giftBracket, "g");
+  var area = new RegExp(shelf.areaBracket, "g");
+  var spec = new RegExp(shelf.specBracket, "g");
+  var bonus = new RegExp(shelf.bonusPhrase, "g");
+  var split = new RegExp(shelf.bundleSplit);
+  var cjk = new RegExp(shelf.cjkBefore);
+  var device = shelf.deviceSpec ? new RegExp(shelf.deviceSpec, "iu") : null;
+  var size = new RegExp(shelf.specAfter, "i");
+  var kinds = ["main", "accessories", "heat"];
   function twd(n){ return "NT$" + String(Math.round(n)).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ","); }
   function day(iso){
     var d = new Date(iso);
@@ -382,8 +456,61 @@ function refreshScript(keyword: string, snapshot: string): string {
     }
     return cfg.phrase && hay.indexOf(cfg.phrase) >= 0 ? 0 : 1;
   }
-  function pick(results){
+  function anyWord(hay, words){
+    for (var i = 0; i < words.length; i++) if (words[i] && hay.indexOf(words[i]) >= 0) return true;
+    return false;
+  }
+  function lastChar(text){
+    for (var i = text.length - 1; i >= 0; i--) if (!space.test(text.charAt(i))) return text.charAt(i);
+    return "";
+  }
+  // The name of the goods, with feature lists and bundled freebies taken out:
+  // 「小米 無線吸塵器 P30(22000Pa吸力/五重濾網)」 keeps its own 濾網 out of the
+  // way, while a bare 「適用 Dyson V12 濾網」 still reads as an add-on.
+  function headOf(title){
+    var bare = String(title == null ? "" : title)
+      .replace(gift, " ")
+      .replace(area, " ")
+      .replace(spec, " ")
+      .replace(bonus, " ");
+    var cut = bare.search(split);
+    var before = cut > 0 ? lastChar(bare.slice(0, cut)) : "";
+    var named = cut > 0 && before && cjk.test(before) ? bare.slice(0, cut) : bare;
+    var out = fold(named);
+    for (var i = 0; i < shelf.bundlePhrases.length; i++) {
+      out = out.split(shelf.bundlePhrases[i]).join("");
+    }
+    return out;
+  }
+  function addOn(hay){
+    if (!shelf.accessory.length) return false;
+    for (var i = 0; i < shelf.accessory.length; i++) {
+      var w = shelf.accessory[i];
+      var at = hay.indexOf(w);
+      if (at < 0) continue;
+      if (w !== shelf.specWord) return true;
+      // 「適用」 opens an add-on listing, but 「臥室浴室適用」 describes a machine.
+      if (at > 0) continue;
+      var after = hay.slice(w.length);
+      if (after && !size.test(after)) return true;
+    }
+    return false;
+  }
+  function shelfOf(title){
+    if (!shelf.enabled) return "main";
+    var hay = fold(title);
+    if (!hay) return "main";
+    if (anyWord(hay, shelf.drop) || anyWord(hay, shelf.consoleDrop)) return "drop";
+    if (shelf.heatEnabled && anyWord(hay, shelf.heat)) return "heat";
+    if (device && device.test(String(title == null ? "" : title))) return "main";
+    // On a console page only a title that says 主機 is the machine; a game or a
+    // spare pad is 周邊 however the shop words it.
+    if (shelf.consolePage && !anyWord(hay, shelf.hardware)) return "accessories";
+    return addOn(headOf(title)) ? "accessories" : "main";
+  }
+  function pick(results, limit){
     var byShop = {}, picked = [], seen = {}, cursors = {}, order = cfg.platforms.split(",");
+    if (!limit) return [];
     results.forEach(function(p, i){
       if (!p || typeof p.price !== "number" || !isFinite(p.price) || p.price <= 0) return;
       if (typeof p.title !== "string" || !p.title.replace(/\\s+/g, "")) return;
@@ -403,11 +530,11 @@ function refreshScript(keyword: string, snapshot: string): string {
     // The same round-robin the server runs: one row per shop per turn, so a
     // single shop cannot fill the page with its own cheap listings. Strong
     // matches go first; weaker ones only fill what is left.
-    for (var tier = 0; tier <= 1 && picked.length < cfg.limit; tier++) {
+    for (var tier = 0; tier <= 1 && picked.length < limit; tier++) {
       var moved = true;
-      while (picked.length < cfg.limit && moved) {
+      while (picked.length < limit && moved) {
         moved = false;
-        for (var k = 0; k < order.length && picked.length < cfg.limit; k++) {
+        for (var k = 0; k < order.length && picked.length < limit; k++) {
           var shop = order[k];
           if (!byShop[shop]) continue;
           // Only a row that is taken moves the cursor; a weaker row skipped in
@@ -426,12 +553,44 @@ function refreshScript(keyword: string, snapshot: string): string {
     });
     return picked.map(function(row){ return row.p; });
   }
+  // Every shelf gets its own pick, so a wall of cheap cases can never push the
+  // console itself off the first section.
+  function sections(results){
+    var pools = { main: [], accessories: [], heat: [] }, out = [];
+    results.forEach(function(p){
+      if (!p || typeof p.price !== "number" || !isFinite(p.price) || p.price <= 0) return;
+      if (typeof p.title !== "string" || !p.title.replace(/\\s+/g, "")) return;
+      var kind = shelfOf(p.title);
+      if (kind === "drop") return;
+      pools[kind].push(p);
+    });
+    for (var i = 0; i < kinds.length; i++) {
+      var items = pick(pools[kinds[i]], shelf.limits[kinds[i]] || 0);
+      if (items.length) out.push({ kind: kinds[i], title: shelf.titles[kinds[i]], products: items });
+    }
+    return out;
+  }
   function draw(body){
     if (!body || !Array.isArray(body.results)) return false;
-    var items = pick(body.results);
-    if (!items.length) return false;
+    var groups = sections(body.results);
+    if (!groups.length) return false;
     var frag = document.createDocumentFragment();
-    items.forEach(function(p, i){ frag.appendChild(item(p, i === 0)); });
+    groups.forEach(function(g, gi){
+      var box = document.createElement("section");
+      box.className = "group";
+      box.setAttribute("data-kind", g.kind);
+      // One shelf needs no heading; two shelves have to say what they are.
+      if (groups.length > 1) {
+        var caption = document.createElement("h2");
+        caption.textContent = g.title;
+        box.appendChild(caption);
+      }
+      var ul = document.createElement("ul");
+      ul.className = "list";
+      g.products.forEach(function(p, i){ ul.appendChild(item(p, gi === 0 && i === 0)); });
+      box.appendChild(ul);
+      frag.appendChild(box);
+    });
     list.replaceChildren(frag);
     list.hidden = false;
     if (empty) empty.hidden = true;
@@ -468,7 +627,8 @@ export function renderKPage(data: KPageData, now: Date = new Date()): string {
   const description = kPageDescription(data);
   const captured = data.fetchedAt.getTime() > 0 ? data.fetchedAt : now;
   const snapshot = taipeiDate(captured);
-  const list = itemList(data.products);
+  const groups = sectionsOf(data);
+  const list = groupList(groups);
   const hasItems = data.products.length > 0;
   const body = `<main>
 <nav class="crumbs" aria-label="路徑"><a href="/">首頁</a>  ›  <a href="/k/">熱門比價</a>  ›  <span>${escapeHtml(data.keyword)}</span></nav>
@@ -479,7 +639,7 @@ ${introParagraph(data)}
 <a class="cta" href="${escapeHtml(liveSearchPath(data.keyword))}">看即時比價</a>
 <p class="stamp" id="fresh" role="status" aria-live="polite" hidden>正在取得最新價格…</p>
 <p class="stamp" id="stamp"${hasItems ? "" : " hidden"} data-snapshot="${escapeHtml(snapshot)}">價格為 ${escapeHtml(snapshot)} 查詢，實際依各賣場為準</p>
-<ul class="list loading" id="list" data-snapshot="${escapeHtml(snapshot)}"${hasItems ? "" : " hidden"}>${list}</ul>
+<div class="groups loading" id="groups" data-snapshot="${escapeHtml(snapshot)}"${hasItems ? "" : " hidden"}>${list}</div>
 <p class="empty" id="empty"${hasItems ? " hidden" : ""}>${data.archived ? "這一頁沒有留下存檔商品，點上面的「看即時比價」可以直接查目前價格。" : "各賣場這次沒回傳商品，可以先看上面的即時比價，或稍後再回來。"}</p>
 <p class="more"><a href="/k/">看更多熱門比價</a> · <a href="/">回首頁</a></p>
 </main>`;
@@ -489,7 +649,7 @@ ${introParagraph(data)}
     canonical,
     body,
     extraHead: `${structuredData(data, canonical)}\n`,
-    script: refreshScript(data.keyword, snapshot),
+    script: refreshScript(data.keyword, data.category, snapshot),
   });
 }
 
