@@ -1,4 +1,5 @@
 import { HOT_KEYWORDS } from "./hot-keywords";
+import { flattenGroups, pickKGroups, type KPageGroup } from "./k-group";
 import { pickKProducts } from "./k-pick";
 import { snapshotDate, snapshotForSlug, type KSnapshot } from "./k-snapshots";
 import { scrapedShopFailed } from "./reliability";
@@ -28,6 +29,28 @@ function remember(key: string, body: SearchResponse, now: number): void {
     if (reuse.size > 400) reuse.clear();
   }
   reuse.set(key, { at: now, body });
+}
+
+export interface KGroupOptions {
+  keyword: string;
+  category: string;
+  /** Shops that must not appear on this page. */
+  excludePlatforms?: readonly PlatformId[];
+  /** Round-robin order. Defaults to the canonical platform order. */
+  platformOrder?: readonly PlatformId[];
+}
+
+/**
+ * The sections of one /k/ page. 3C and 家電 pages split into 主商品 and its
+ * add-ons; every other category stays a single list, unchanged.
+ */
+export function pageGroups(results: readonly Product[], options: KGroupOptions): KPageGroup[] {
+  return pickKGroups(results, {
+    keyword: options.keyword,
+    category: options.category,
+    excludePlatforms: options.excludePlatforms ?? [],
+    platformOrder: options.platformOrder,
+  });
 }
 
 export interface TopProductOptions {
@@ -110,7 +133,8 @@ export async function handleKPath(options: KRouteOptions): Promise<KResult> {
   if (!hot) {
     const snapshot = snapshotForSlug(slug, options.snapshots);
     const archivedCategory = snapshot?.category ?? "其他";
-    const products = topProducts(snapshot?.products ?? [], keyword);
+    const groups = pageGroups(snapshot?.products ?? [], { keyword, category: archivedCategory });
+    const products = flattenGroups(groups);
     const data: KPageData = {
       keyword,
       slug,
@@ -118,6 +142,7 @@ export async function handleKPath(options: KRouteOptions): Promise<KResult> {
       reason: "",
       archived: true,
       products,
+      groups,
       platforms: [],
       fetchedAt: snapshot ? snapshotDate(snapshot) : now,
     };
@@ -147,12 +172,14 @@ export async function handleKPath(options: KRouteOptions): Promise<KResult> {
     }
   }
 
+  const groups = pageGroups(body?.results ?? [], { keyword, category: hot.category });
   const data: KPageData = {
     keyword,
     slug,
     category: hot.category,
     reason: hot.reason,
-    products: topProducts(body?.results ?? [], keyword),
+    products: flattenGroups(groups),
+    groups,
     platforms: body?.platforms ?? [],
     fetchedAt: body ? new Date(body.fetchedAt) : now,
   };

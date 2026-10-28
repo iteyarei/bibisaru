@@ -9,6 +9,7 @@ import {
   taipeiDate,
   type KPageData,
 } from "../shared/k-page";
+import type { KPageGroup } from "../shared/k-group";
 import { kOverviewUrl, kPageUrl } from "../shared/k-slugs";
 import type { PlatformReport, Product } from "../shared/types";
 
@@ -111,7 +112,7 @@ describe("landing page body", () => {
   it("puts a prominent live-search button right under the intro", () => {
     expect(html).toContain('<a class="cta" href="/?q=%E9%99%A4%E6%BF%95%E6%A9%9F">看即時比價</a>');
     // Above the list, so it is reachable without scrolling past 20 listings.
-    expect(html.indexOf('class="cta"')).toBeLessThan(html.indexOf('id="list"'));
+    expect(html.indexOf('class="cta"')).toBeLessThan(html.indexOf('id="groups"'));
   });
 
   it("renders no more than the item cap", () => {
@@ -122,6 +123,108 @@ describe("landing page body", () => {
     expect(out.match(/class="thumb"/g)?.length ?? 0).toBeGreaterThanOrEqual(K_PAGE_ITEMS - 1);
     const li = (html2: string) => (html2.match(/<li>/g) ?? []).length;
     expect(li(out)).toBe(K_PAGE_ITEMS);
+  });
+});
+
+describe("landing page sections", () => {
+  const groups: KPageGroup[] = [
+    {
+      kind: "main",
+      title: "主機",
+      products: [
+        product({ platform: "momo", title: "Switch 2 主機 台灣公司貨", price: 15_880, url: "https://www.momoshop.com.tw/goods/1" }),
+        product({ platform: "pchome", title: "Switch 2 主機 同捆組", price: 16_980, url: "https://24h.pchome.com.tw/prod/1" }),
+      ],
+    },
+    {
+      kind: "accessories",
+      title: "配件與周邊",
+      products: [product({ platform: "yahoo", title: "Switch 2 保護殼 透明", price: 290, url: "https://tw.buy.yahoo.com/gdsale/1" })],
+    },
+  ];
+  const grouped = data({
+    keyword: "Switch 2",
+    slug: "switch-2",
+    category: "3C",
+    products: groups.flatMap((group) => group.products),
+    groups,
+  });
+  const html = renderKPage(grouped, TODAY);
+
+  const sections = (source: string) =>
+    [...source.matchAll(/<section class="group" data-kind="([a-z]+)">([\s\S]*?)<\/section>/g)].map((match) => ({
+      kind: match[1],
+      body: match[2],
+    }));
+
+  it("draws one list per shelf, each under its own heading", () => {
+    const found = sections(html);
+    expect(found.map((section) => section.kind)).toEqual(["main", "accessories"]);
+    expect(found[0].body).toContain("<h2>主機</h2>");
+    expect(found[1].body).toContain("<h2>配件與周邊</h2>");
+    // A section holds exactly one ul, so the numbering restarts on each shelf.
+    expect(found.every((section) => (section.body.match(/<ul class="list">/g) ?? []).length === 1)).toBe(true);
+    expect((html.match(/<ul class="list">/g) ?? []).length).toBe(2);
+  });
+
+  it("puts the goods first and the add-ons after them", () => {
+    expect(html.indexOf("Switch 2 主機 台灣公司貨")).toBeLessThan(html.indexOf("Switch 2 保護殼"));
+    expect(html.indexOf("<h2>主機</h2>")).toBeLessThan(html.indexOf("<h2>配件與周邊</h2>"));
+  });
+
+  it("marks exactly one listing 最低價, the head of the first shelf", () => {
+    expect((html.match(/class="best"/g) ?? []).length).toBe(1);
+    // One badge for the page, on the cheapest of the goods — not repeated on
+    // the add-ons, where a 290 元 case would otherwise out-shout the console.
+    const [goods] = sections(html);
+    expect(goods.body.slice(0, goods.body.indexOf("</li>"))).toContain("最低價");
+    expect(html.slice(html.indexOf('data-kind="accessories"'))).not.toContain('class="best"');
+  });
+
+  it("prints no heading when there is only one shelf", () => {
+    const single = renderKPage(
+      data({
+        groups: [{ kind: "main", title: "本體", products: [...data().products] }],
+      }),
+      TODAY,
+    );
+    expect(sections(single)).toHaveLength(1);
+    expect(single).not.toContain("<h2>");
+    expect(single).toContain('<ul class="list">');
+  });
+
+  it("counts every shelf in the copy and spans the whole price range", () => {
+    expect(html).toContain("共 3 筆");
+    expect(html).toContain("價格從 NT$290 到 NT$16,980");
+    expect(kPageDescription(grouped)).toContain("共 3 筆");
+    expect(kPageDescription(grouped)).toContain("NT$290 到 NT$16,980");
+  });
+
+  it("tells search engines about every shelf, not just the first", () => {
+    const json = JSON.parse(html.slice(html.indexOf('<script type="application/ld+json">') + 35, html.indexOf("</script>"))) as {
+      "@graph": Array<Record<string, unknown>>;
+    };
+    const list = json["@graph"].find((node) => node["@type"] === "ItemList") as { numberOfItems: number };
+    const offer = json["@graph"].find((node) => node["@type"] === "Product") as { offers: Record<string, unknown> };
+    expect(list.numberOfItems).toBe(3);
+    expect(offer.offers).toMatchObject({ lowPrice: 290, highPrice: 16_980, offerCount: 3 });
+  });
+
+  it("builds the shelves itself when a caller only hands it a flat list", () => {
+    // Archived snapshots predate groups; the page still gets its sections.
+    const flat = renderKPage(
+      data({
+        keyword: "Switch 2",
+        category: "3C",
+        products: [
+          product({ title: "Switch 2 主機 台灣公司貨", price: 15_880 }),
+          product({ platform: "pchome", title: "Switch 2 保護殼", price: 290 }),
+        ],
+      }),
+      TODAY,
+    );
+    expect(sections(flat).map((section) => section.kind)).toEqual(["main", "accessories"]);
+    expect(flat).toContain("<h2>主機</h2>");
   });
 });
 
@@ -205,7 +308,7 @@ describe("landing page when every shop fails", () => {
 
 describe("progressive enhancement script", () => {
   const html = renderKPage(data(), TODAY);
-  const script = html.slice(html.indexOf('id="list"'), html.lastIndexOf("</body>"));
+  const script = html.slice(html.indexOf('id="groups"'), html.lastIndexOf("</body>"));
 
   it("refreshes from /api/search with the same platform list", () => {
     expect(script).toContain("/api/search?q=");
@@ -221,7 +324,7 @@ describe("progressive enhancement script", () => {
 
   it("shows a loading state so a snapshot price never looks final", () => {
     expect(html).toContain("正在取得最新價格…");
-    expect(html).toContain('class="list loading"');
+    expect(html).toContain('class="groups loading"');
     // Hidden in the markup and revealed by the script, so a reader with
     // scripting off never sees a loading message that never ends.
     expect(html).toContain('id="fresh" role="status" aria-live="polite" hidden');
@@ -254,7 +357,7 @@ describe("progressive enhancement script", () => {
   it("stays readable with scripting off: no permanent dimming, no stuck spinner", () => {
     // The list ships with the loading class so it fades the instant it paints,
     // but with JS off nothing would ever remove it.
-    expect(html).toContain("<noscript><style>.list.loading{opacity:1}</style></noscript>");
+    expect(html).toContain("<noscript><style>.groups.loading{opacity:1}</style></noscript>");
     // It must not un-hide [hidden] boxes: that would show "no products" over a real list.
     expect(html).not.toContain(".empty[hidden],ul.list[hidden]");
     expect(html).toContain('id="fresh" role="status" aria-live="polite" hidden');
