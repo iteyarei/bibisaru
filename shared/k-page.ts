@@ -371,6 +371,9 @@ function refreshScript(keyword: string, category: string, snapshot: string): str
       areaBracket: shelf.areaBracket,
       giftBracket: shelf.giftBracket,
       bonusPhrase: shelf.bonusPhrase,
+      // 食品 pages never group, so packaging is dropped here instead of shelved.
+      packaging: shelf.packaging,
+      packagingBonus: shelf.packagingBonus,
     },
   });
   return `<script>
@@ -390,6 +393,8 @@ function refreshScript(keyword: string, category: string, snapshot: string): str
   var partOnly = new RegExp(shelf.partOnly, "i");
   var modelBefore = new RegExp(shelf.modelBefore);
   var bonus = new RegExp(shelf.bonusPhrase, "g");
+  var packaging = shelf.packaging || [];
+  var packagingBonus = shelf.packagingBonus ? new RegExp(shelf.packagingBonus, "g") : null;
   var split = new RegExp(shelf.bundleSplit);
   var cjk = new RegExp(shelf.cjkBefore);
   var device = shelf.deviceSpec ? new RegExp(shelf.deviceSpec, "iu") : null;
@@ -539,7 +544,14 @@ function refreshScript(keyword: string, category: string, snapshot: string): str
     }
     return false;
   }
+  function packagingOnly(title){
+    if (!packaging.length) return false;
+    var raw = String(title == null ? "" : title);
+    var bare = packagingBonus ? raw.replace(packagingBonus, " ") : raw;
+    return anyWord(fold(bare), packaging);
+  }
   function shelfOf(title){
+    if (packagingOnly(title)) return "drop";
     if (!shelf.enabled) return "main";
     var hay = fold(title);
     if (!hay) return "main";

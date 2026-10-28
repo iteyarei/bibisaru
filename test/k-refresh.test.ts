@@ -268,6 +268,28 @@ describe("the inline refresh draws the same shelves as the server", () => {
     expect(JSON.stringify(sectionOf(console, "accessories"))).toContain("度假勝地");
   });
 
+  it("drops the packaging from a 食品 page too", async () => {
+    // The browser rule is a second copy of the server rule. A 食品 page never
+    // groups, so without this the refresh would put the filter paper straight
+    // back in the one list the server just cleaned.
+    const list = await afterRefresh("濾掛咖啡", "食品", [
+      { platform: "ruten", title: "咖啡濾紙 濾掛咖啡濾紙 掛耳內袋", price: 1, image: "", url: "https://www.ruten.com.tw/item/1" },
+      {
+        platform: "ruten",
+        title: "DB02系列 台灣製造濾掛咖啡外盒 10入",
+        price: 8,
+        image: "",
+        url: "https://www.ruten.com.tw/item/2",
+      },
+      { platform: "pchome", title: "濾掛咖啡綜合組(9gx100入)", price: 999, image: "", url: "https://24h.pchome.com.tw/prod/3" },
+    ]);
+    expect(headingsOf(list)).toEqual([]);
+    const drawn = JSON.stringify(itemsOf(list));
+    expect(drawn).toContain("濾掛咖啡綜合組");
+    expect(drawn).not.toContain("濾紙");
+    expect(drawn).not.toContain("外盒");
+  });
+
   it("prints one headingless list when a 生活 page has nothing to split", async () => {
     const list = await afterRefresh("棉被", "生活", [
       { platform: "momo", title: "棉被 雙人 冬被", price: 1_290, image: "", url: "https://www.momoshop.com.tw/goods/1" },
