@@ -193,11 +193,44 @@ describe("landing page sections", () => {
     expect(single).toContain('<ul class="list">');
   });
 
-  it("counts every shelf in the copy and spans the whole price range", () => {
+  it("counts every shelf in the copy but spans only the goods", () => {
+    // 「共 3 筆」 is the search result count, so it keeps counting the case.
+    // The range does not: a NT$290 case must not be what 「價格從」 opens with.
     expect(html).toContain("共 3 筆");
-    expect(html).toContain("價格從 NT$290 到 NT$16,980");
+    expect(html).toContain("價格從 NT$15,880 到 NT$16,980");
+    expect(html).not.toContain("價格從 NT$290");
     expect(kPageDescription(grouped)).toContain("共 3 筆");
-    expect(kPageDescription(grouped)).toContain("NT$290 到 NT$16,980");
+    expect(kPageDescription(grouped)).toContain("NT$15,880 到 NT$16,980");
+  });
+
+  it("still spans every listing on a page that has only one shelf", () => {
+    // 生活／食品 pages do not group, so there is no goods shelf to narrow to.
+    const oneShelf = data({
+      keyword: "棉被",
+      slug: "mianbei",
+      category: "生活",
+      products: [product({ price: 890 }), product({ platform: "pchome", price: 2_480, url: "https://24h.pchome.com.tw/prod/2" })],
+    });
+    expect(kPageDescription(oneShelf)).toContain("NT$890 到 NT$2,480");
+  });
+
+  it("keeps the range on the goods when the copy is rendered from a snapshot", () => {
+    // renderKPage rebuilds sections itself; the range must follow them, not
+    // whatever order the flat list happens to be in.
+    const flat = renderKPage(
+      data({
+        keyword: "iPhone 18 Pro",
+        slug: "iphone-18-pro",
+        category: "3C",
+        products: [
+          product({ title: "iPhone 18 Pro 保護貼 鏡頭膜", price: 280, url: "https://www.momoshop.com.tw/goods/2" }),
+          product({ title: "iPhone 18 Pro 256GB 手機", price: 40_888 }),
+          product({ title: "iPhone 18 Pro 512GB 手機", price: 48_900, url: "https://www.momoshop.com.tw/goods/3" }),
+        ],
+      }),
+      TODAY,
+    );
+    expect(flat).toContain("價格從 NT$40,888 到 NT$48,900");
   });
 
   it("tells search engines about every shelf, not just the first", () => {

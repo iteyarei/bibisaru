@@ -165,6 +165,73 @@ describe("normalizeMomo", () => {
   it("returns nothing when the page has no result list", () => {
     expect(normalizeMomo("<html><title>Access Denied</title></html>")).toEqual([]);
   });
+
+  it("drops a multi-spec page whose price is only a 「起」 price", () => {
+    // Both rows below are copied off the real 除濕機 result list, trimmed to the
+    // fields the reader uses. The first is a brand flagship page that sells the
+    // machine and its spare filters together: momo prints 「促銷價 94 起」 and the
+    // range runs to 2,232, so 94 buys a filter and says nothing about the
+    // dehumidifier. The second is an ordinary single-spec listing.
+    const fromPriceRow = {
+      goodsCode: "TP00081310000028",
+      goodsName: "【hysure 海說】T9Plus  除濕機 空氣清淨除濕機 （HEPA濾網清淨/雙核除濕/一鍵除濕）",
+      goodsPrice: "$$94售價已折",
+      goodsPriceModel: {
+        basePrice: { sign: "$$", price: "94", strPrice: "起", goodsStatus: "售價已折" },
+        rangePrice: { minPriceSign: "$$", minPrice: "94", rangeSign: "~", maxPriceSign: "$$", maxPrice: "2,232" },
+      },
+      imgUrl: "https://i6.momoshop.com.tw/1792509176/goodsimg/TP000/8131/0000/028/TP00081310000028_O_m.jpg",
+      goodsUrl: "https://www.momoshop.com.tw/TP/TP0008131/goodsDetail/TP00081310000028",
+      goodsStock: "212",
+    };
+    const singleRow = {
+      goodsCode: "14008859",
+      goodsName: "【SHARP 夏普】12公升 自動除菌離子除濕機(DW-LT12ST-W)",
+      goodsPrice: "$$7,990",
+      goodsPriceModel: { basePrice: { sign: "$$", price: "7,990", strPrice: "", goodsStatus: "" } },
+      imgUrl: "https://img1.momoshop.com.tw/goodsimg/0014/008/859/14008859_OL.jpg",
+      goodsUrl: "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=14008859",
+      goodsStock: "222",
+    };
+    const products = normalizeMomo(momoPage([fromPriceRow, singleRow]));
+    expect(products.map((product) => product.title)).toEqual(["【SHARP 夏普】12公升 自動除菌離子除濕機(DW-LT12ST-W)"]);
+    expect(products[0].price).toBe(7990);
+  });
+
+  it("keeps a listing whose title says 起 but whose price is its own", () => {
+    // 「起」 is an ordinary word in a title: 「3起」, 「買1起」. Only the price
+    // fields may drop a listing, never the name.
+    const products = normalizeMomo(
+      momoPage([
+        {
+          ...momoItem,
+          goodsName: "靜音除濕機 6L 小坪數起用",
+          goodsPrice: "$$2,490",
+          goodsPriceModel: { basePrice: { price: "2,490", strPrice: "" } },
+        },
+      ]),
+    );
+    expect(products.map((product) => product.title)).toEqual(["靜音除濕機 6L 小坪數起用"]);
+    expect(products[0].price).toBe(2490);
+  });
+
+  it("drops a range page whose marker sits on rangePrice instead of basePrice", () => {
+    const products = normalizeMomo(
+      momoPage([
+        {
+          ...momoItem,
+          goodsName: "多規格除濕機",
+          goodsPrice: "$$1,280",
+          goodsPriceModel: {
+            basePrice: { price: "1,280", strPrice: "" },
+            rangePrice: { minPrice: "1,280", minPriceStr: "起", maxPrice: "3,980" },
+          },
+        },
+        momoItem,
+      ]),
+    );
+    expect(products.map((product) => product.title)).toEqual(["輕巧入耳式耳機"]);
+  });
 });
 
 describe("normalizeCoupang", () => {

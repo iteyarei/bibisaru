@@ -78,6 +78,26 @@ function priceSpan(products: readonly Product[]): { low: number; high: number } 
   return { low: Math.min(...prices), high: Math.max(...prices) };
 }
 
+/**
+ * The listings the copy quotes its price range from: the goods shelf when the
+ * page has one, every listing when it does not.
+ *
+ * 「價格從 NT$280 到 NT$48,900」 on the iPhone page was a screen protector at
+ * one end and a phone at the other, and 「從 NT$258 起」 on the Switch page was
+ * a controller stand. The add-ons are worth listing, so they keep their own
+ * shelf; they must not set the range. 「共 N 筆」 stays the whole result count,
+ * which is why only the span reads this.
+ *
+ * A page with a single shelf (生活, 食品: no grouping at all) keeps the old
+ * behaviour, and so does one whose goods shelf somehow came out empty.
+ */
+function priceListings(data: KPageData): readonly Product[] {
+  const groups = sectionsOf(data);
+  if (groups.length < 2) return data.products;
+  const main = groups.find((group) => group.kind === "main");
+  return main && main.products.length ? main.products : data.products;
+}
+
 /** What the page actually draws: the given sections, or ones rebuilt from the list. */
 export function sectionsOf(data: KPageData): readonly KPageGroup[] {
   if (data.groups) return data.groups;
@@ -155,7 +175,7 @@ export function kPageDescription(data: KPageData): string {
   if (!products.length) {
     return `${keyword} 的即時比價頁：一次搜尋 momo、PChome、Yahoo 奇摩、酷澎、蝦皮、全聯、東森、樂天、露天，把價格由低到高排好。目前各賣場暫時沒有回傳商品，可以直接點進去看最新價格。`;
   }
-  const { low, high } = priceSpan(products);
+  const { low, high } = priceSpan(priceListings(data));
   const where = shops ? `${shops} 等平台` : "各平台";
   const range = low === high ? `均一價 ${formatTwd(low)}` : `${formatTwd(low)} 到 ${formatTwd(high)}`;
   return `${keyword} 在 ${where}共 ${products.length} 筆，價格 ${range}。比比猴把各家搜尋結果放在同一頁，由低到高排好，沒有置頂廣告，點進商品直接到原賣場。`;
@@ -167,7 +187,7 @@ function introParagraph(data: KPageData): string {
     return `<p class="lead">目前各平台暫時沒有回傳 <b>${escapeHtml(keyword)}</b> 的商品，可能是被擋或正在換季。你還是可以直接用比比猴即時搜尋再試一次，或到各賣場自己的頁面找。</p>`;
   }
   const shops = topPlatformNames(products, data.platforms);
-  const { low, high } = priceSpan(products);
+  const { low, high } = priceSpan(priceListings(data));
   const range = low === high ? `價格是 ${formatTwd(low)}` : `價格從 ${formatTwd(low)} 到 ${formatTwd(high)}`;
   const where = shops ? `${shops} 等平台` : "各平台";
   return `<p class="lead"><b>${escapeHtml(keyword)}</b> 目前在 ${escapeHtml(where)}共 ${products.length} 筆，${range}。比比猴把各家搜尋結果放在同一頁、由低到高排好，沒有置頂廣告。價格與庫存以各賣場頁面為準，點進商品就能直接到原賣場。</p>`;
@@ -338,12 +358,22 @@ function refreshScript(keyword: string, category: string, snapshot: string): str
       cjkBefore: shelf.cjkBefore,
       deviceSpec: shelf.deviceSpec,
       hardware: shelf.hardware,
+      machine: shelf.machine,
+      machineSpec: shelf.machineSpec,
+      accessoryNouns: shelf.accessoryNouns,
+      capacity: shelf.capacity,
       consolePage: shelf.consolePage,
       consoleDrop: shelf.consoleDrop,
       specBracket: shelf.specBracket,
+      partBracket: shelf.partBracket,
+      partOnly: shelf.partOnly,
+      modelBefore: shelf.modelBefore,
       areaBracket: shelf.areaBracket,
       giftBracket: shelf.giftBracket,
       bonusPhrase: shelf.bonusPhrase,
+      // 食品 pages never group, so packaging is dropped here instead of shelved.
+      packaging: shelf.packaging,
+      packagingBonus: shelf.packagingBonus,
     },
   });
   return `<script>
@@ -359,10 +389,16 @@ function refreshScript(keyword: string, category: string, snapshot: string): str
   var gift = new RegExp(shelf.giftBracket, "g");
   var area = new RegExp(shelf.areaBracket, "g");
   var spec = new RegExp(shelf.specBracket, "g");
+  var partBracket = new RegExp(shelf.partBracket);
+  var partOnly = new RegExp(shelf.partOnly, "i");
+  var modelBefore = new RegExp(shelf.modelBefore);
   var bonus = new RegExp(shelf.bonusPhrase, "g");
+  var packaging = shelf.packaging || [];
+  var packagingBonus = shelf.packagingBonus ? new RegExp(shelf.packagingBonus, "g") : null;
   var split = new RegExp(shelf.bundleSplit);
   var cjk = new RegExp(shelf.cjkBefore);
   var device = shelf.deviceSpec ? new RegExp(shelf.deviceSpec, "iu") : null;
+  var capacity = shelf.capacity ? new RegExp(shelf.capacity, "i") : null;
   var size = new RegExp(shelf.specAfter, "i");
   var kinds = ["main", "accessories", "heat"];
   function twd(n){ return "NT$" + String(Math.round(n)).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ","); }
@@ -467,8 +503,20 @@ function refreshScript(keyword: string, category: string, snapshot: string): str
   // The name of the goods, with feature lists and bundled freebies taken out:
   // 「小米 無線吸塵器 P30(22000Pa吸力/五重濾網)」 keeps its own 濾網 out of the
   // way, while a bare 「適用 Dyson V12 濾網」 still reads as an add-on.
+  // 「…空氣清淨機 FU-J41T-W(集塵HEPA濾網)」 is the purifier naming its filter;
+  // 「適用 FU-J41T-W 集塵HEPA濾網」 is the filter. Same test as the server.
+  function withoutPartBracket(title){
+    var m = partBracket.exec(title);
+    if (!m) return title;
+    if (!partOnly.test(m[1])) return title;
+    var before = title.slice(0, m.index);
+    if (!modelBefore.test(before)) return title;
+    if (!/[\u3400-\u9fff]/.test(before)) return title;
+    if (/^(?:適用|專用|替換|通用|副廠)/.test(fold(before))) return title;
+    return before;
+  }
   function headOf(title){
-    var bare = String(title == null ? "" : title)
+    var bare = withoutPartBracket(String(title == null ? "" : title))
       .replace(gift, " ")
       .replace(area, " ")
       .replace(spec, " ")
@@ -496,7 +544,14 @@ function refreshScript(keyword: string, category: string, snapshot: string): str
     }
     return false;
   }
+  function packagingOnly(title){
+    if (!packaging.length) return false;
+    var raw = String(title == null ? "" : title);
+    var bare = packagingBonus ? raw.replace(packagingBonus, " ") : raw;
+    return anyWord(fold(bare), packaging);
+  }
   function shelfOf(title){
+    if (packagingOnly(title)) return "drop";
     if (!shelf.enabled) return "main";
     var hay = fold(title);
     if (!hay) return "main";
@@ -506,7 +561,16 @@ function refreshScript(keyword: string, category: string, snapshot: string): str
     // On a console page only a title that says 主機 is the machine; a game or a
     // spare pad is 周邊 however the shop words it.
     if (shelf.consolePage && !anyWord(hay, shelf.hardware)) return "accessories";
-    return addOn(headOf(title)) ? "accessories" : "main";
+    // The machine names its own engineering, and that outranks an add-on word
+    // in the same title. A capacity or a 水箱 only counts when the title names
+    // no concrete add-on, or a filter for a 22L machine would become the machine.
+    if (anyWord(hay, shelf.machine)) return "main";
+    var head = headOf(title);
+    if (!addOn(head)) return "main";
+    var spec = anyWord(head, shelf.machineSpec) ||
+      (capacity && (capacity.test(String(title == null ? "" : title)) || capacity.test(head)));
+    if (spec && !anyWord(head, shelf.accessoryNouns)) return "main";
+    return "accessories";
   }
   function pick(results, limit){
     var byShop = {}, picked = [], seen = {}, cursors = {}, order = cfg.platforms.split(",");

@@ -7,6 +7,7 @@ import {
   K_ACCESSORY_ITEMS,
   K_HEAT_ITEMS,
   K_MAIN_ITEMS,
+  packagingOnly,
   pickKGroups,
   productHead,
 } from "../shared/k-group";
@@ -305,5 +306,149 @@ describe("platform ids survive a legacy row", () => {
     const groups = pickKGroups([...stale, product({ title: "除濕機 12L" })], { keyword: "除濕機", category: "家電" });
     expect(groups[0].products).toHaveLength(1);
     expect(groups[0].products[0].platform).toBe("momo");
+  });
+});
+
+describe("a machine names its own engineering", () => {
+  // A search for 「除濕機」 returns its filters, and the shop words the machine
+  // the way the filter is worded: 「6L一級能效除濕機｜大水箱・甲殼素濾網」.
+  it("keeps the dehumidifier that mentions its filter on the main shelf", () => {
+    expect(
+      kindOf("【SAMPO 聲寶】6L一級能效除濕機｜大水箱・甲殼素濾網・乾衣模式(AD-WB512T)", "除濕機"),
+    ).toBe("main");
+    // The same model without the word 濾網, which was always read correctly.
+    expect(kindOf("SAMPO聲寶 6L一級能效除濕機 AD-WB512T", "除濕機")).toBe("main");
+  });
+
+  it("still reads a filter for that machine as an add-on", () => {
+    expect(kindOf("SAMPO 除濕機 專用 替換濾網", "除濕機")).toBe("accessories");
+    // 「坪」 is the size of a room, not a capacity: it must not save this one.
+    expect(kindOf("適用 14坪 除濕機 濾網", "除濕機")).toBe("accessories");
+  });
+
+  it("reads a capacity as the machine, and 適用 mid-title as nothing", () => {
+    expect(kindOf("適用智能除溼機家用22L抽溼機靜音臥室去溼機全屋乾衣機", "乾衣機")).toBe("main");
+    // A case quotes the phone it fits and no capacity of its own.
+    expect(kindOf("適用 iPhone 18 Pro 保護殼", "iPhone 18 Pro", "3C")).toBe("accessories");
+    expect(kindOf("磁吸保護殼", "iPhone 18 Pro", "3C")).toBe("accessories");
+  });
+
+  it("puts a machine's filter behind a model number back on the main shelf", () => {
+    expect(
+      kindOf("【SHARP 夏普】10坪AIoT智慧除菌離子空氣清淨機 FU-J41T-W(集塵HEPA濾網)", "空氣清淨機"),
+    ).toBe("main");
+    // The same filter sold on its own has no model in front of the bracket.
+    expect(kindOf("適用 FU-J41T-W 集塵HEPA濾網 一年份", "空氣清淨機")).toBe("accessories");
+  });
+});
+
+describe("dishwasher powder is not a dishwasher", () => {
+  it("moves the powder to the add-ons", () => {
+    expect(kindOf("【finish 亮碟】洗碗機專用強力洗滌粉劑洗碗粉", "洗碗機")).toBe("accessories");
+  });
+
+  it("keeps the machine that throws the powder in", () => {
+    // 「送洗碗粉六人份」 is a freebie, so the head never reaches 洗碗粉.
+    expect(
+      kindOf("含基本安裝送洗碗粉六人份 熱風循環洗碗機 HDW-06BT010+HDP-10D1 (24h到貨)", "洗碗機"),
+    ).toBe("main");
+  });
+});
+
+describe("a console bundle is the console", () => {
+  it("keeps a bundle with a game on the main shelf", () => {
+    expect(kindOf("任天堂 Nintendo Switch 2 + 任選遊戲", "Switch 2", "3C")).toBe("main");
+    expect(
+      kindOf(
+        "【Nintendo 任天堂】Switch 2 薩爾達40周年特仕版機+《NS2寶可夢傳說 Z-A》+《Joy-con 2》+《9H鋼化貼》",
+        "Switch 2",
+        "3C",
+      ),
+    ).toBe("main");
+    expect(kindOf("任天堂 Nintendo Switch 2 + 任選joy-con", "Switch 2", "3C")).toBe("main");
+  });
+
+  it("still reads a game and a pad as 周邊", () => {
+    expect(
+      kindOf("【Nintendo 任天堂】NS2 Nintendo Switch 運動 度假勝地(台灣公司貨 -附贈首批特典)", "Switch 2", "3C"),
+    ).toBe("accessories");
+    expect(kindOf("Nintendo 任天堂 Switch 2 Joy-con 2 控制器 手把 (台灣公司貨)", "Switch 2", "3C")).toBe("accessories");
+  });
+});
+
+describe("spare parts belong to the add-ons", () => {
+  it("moves a brush sold for a robot to the add-ons", () => {
+    expect(kindOf("【LG 樂金】掃地機器人專用 防糾結滾輪刷頭AHR73889701", "掃地機器人")).toBe("accessories");
+    expect(
+      kindOf("Vbot i6 / R8 / M270 / R10掃地機器人原廠專用 二代增效彈性刷毛 藍彩刷頭(4入)", "掃地機器人"),
+    ).toBe("accessories");
+  });
+
+  it("keeps a machine that advertises the parts it runs", () => {
+    // 「零纏繞邊刷」「自動洗拖布」 are features of the robot, not parts for sale.
+    expect(kindOf("【Roborock】Qrevo L 全能掃拖機器人(自動洗拖布/零纏繞邊刷/10000Pa)", "掃地機器人")).toBe("main");
+  });
+});
+
+describe("a 食品 page drops the packaging", () => {
+  // 「濾掛咖啡」 opened with a NT$1 bag of filter paper and a NT$8 empty gift
+  // box: nobody compares those, and they make the page look like it sells
+  // boxes. 食品 pages never group, so nothing else would have caught them.
+  it("drops a title that sells the wrapping", () => {
+    for (const title of [
+      "咖啡濾紙 濾掛咖啡濾紙 掛耳內袋",
+      "DB02系列 八色可選 無印款 台灣製造濾掛咖啡外盒 10入系列 (牛皮款/霧面款)",
+      "可攜式咖啡沖泡袋紙 紙飛機 冷萃咖啡 熱泡咖啡 新浸泡式咖啡",
+      "濾掛咖啡 空盒 禮盒空盒 10入",
+    ]) {
+      expect(kindOf(title, "濾掛咖啡", "食品")).toBe("drop");
+    }
+  });
+
+  it("keeps the food, including 湯底包 and 燉包", () => {
+    for (const title of [
+      "自然緣素 薑母鴨湯包-全素",
+      "台式經典薑母鴨(1包_1100g/包_火鍋/鍋底/湯底/年菜必買)",
+      "【和春堂 三代薑母鴨燉包】冬季食補首選",
+      "濾掛咖啡 獨立內袋包裝 10入",
+      "【禎祥食品】黃金蟲草薑母鴨禮盒(1500g/盒)",
+    ]) {
+      expect(kindOf(title, "薑母鴨", "食品")).toBe("main");
+    }
+  });
+
+  it("keeps a box that only comes with the food", () => {
+    // 「附精美外盒」 says what is thrown in, not what is sold.
+    expect(kindOf("濾掛咖啡禮盒 附精美外盒 16包/盒", "濾掛咖啡", "食品")).toBe("main");
+    expect(kindOf("薑母鴨湯底 送包裝袋", "薑母鴨", "食品")).toBe("main");
+  });
+
+  it("never reads packaging into 家電 or 生活", () => {
+    // 「濾紙」 on a coffee-machine page is a consumable for the machine, and the
+    // appliance rule already shelves it as an add-on; the food rule must not
+    // reach in and delete it.
+    expect(groupPlan("咖啡機", "家電").packaging).toEqual([]);
+    expect(groupPlan("棉被", "生活").packaging).toEqual([]);
+    expect(packagingOnly("咖啡濾紙 100入", groupPlan("咖啡機", "家電"))).toBe(false);
+  });
+
+  it("does not drop every title just because the query is the packaging", () => {
+    // Searching 「濾紙」 itself must still show the filters: the query's own
+    // word is never dropped, the same way 「水龍頭」 is never dropped.
+    expect(groupPlan("濾紙", "食品").packaging).not.toContain("濾紙");
+    expect(kindOf("咖啡濾紙 100入", "濾紙", "食品")).toBe("main");
+  });
+
+  it("still drops them when the food page is rebuilt from a snapshot", () => {
+    const groups = deriveGroups(
+      [
+        product({ title: "咖啡濾紙 濾掛咖啡濾紙 掛耳內袋", price: 1, platform: "ruten", url: "https://r.test/1" }),
+        product({ title: "濾掛咖啡 10入/盒", price: 199, platform: "pchome", url: "https://p.test/1" }),
+      ],
+      "濾掛咖啡",
+      "食品",
+    );
+    expect(groups).toHaveLength(1);
+    expect(groups[0].products.map((item) => item.title)).toEqual(["濾掛咖啡 10入/盒"]);
   });
 });
