@@ -10,7 +10,6 @@ import { fill, formatCount, formatUpdated, messages, PRESET_EXCLUDE } from "../s
 import { PLATFORM_IDS, PLATFORMS, platformById } from "../shared/platforms";
 import { normalizeQuery } from "../shared/query";
 import { similarQuery } from "../shared/similar";
-import { applySplurgeName, pickSplurgeName, SPLURGE_ROLL_MS } from "../shared/splurge";
 import type { PlatformId, SearchResponse, SortMode } from "../shared/types";
 import { groupHotKeywords, HOT_KEYWORDS, hotKeywordPath } from "../shared/hot-keywords";
 import { bindClearButton } from "./clear-field";
@@ -29,7 +28,6 @@ let requestId = 0;
 const searchForm = document.querySelector<HTMLFormElement>("#search-form")!;
 const searchInput = document.querySelector<HTMLInputElement>("#q")!;
 const searchButton = searchForm.querySelector<HTMLButtonElement>(".sbtn")!;
-const splurgeButton = document.querySelector<HTMLButtonElement>("#splurge")!;
 const syncSearchClear = bindClearButton(searchInput, document.querySelector<HTMLButtonElement>("#clear-q")!);
 const excludeInput = document.querySelector<HTMLInputElement>("#exclude-input")!;
 const syncExcludeClear = bindClearButton(
@@ -242,40 +240,6 @@ function searchSimilar(title: string): void {
   window.scrollTo(0, 0);
   void runSearch(next, true);
 }
-
-let lastSplurge = "";
-let splurgeRolling = false;
-splurgeButton.setAttribute("aria-label", messages.splurgeLabel);
-splurgeButton.style.setProperty("--splurge-roll", `${SPLURGE_ROLL_MS}ms`);
-const splurgeFull = splurgeButton.querySelector(".splurge-full");
-const splurgeShort = splurgeButton.querySelector(".splurge-short");
-if (splurgeFull) splurgeFull.textContent = messages.splurge;
-if (splurgeShort) splurgeShort.textContent = messages.splurgeShort;
-const desktopPointer = (): boolean => window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-// mousedown, not pointerdown: canceling pointerdown can swallow the click on touch screens.
-splurgeButton.addEventListener("mousedown", (event) => {
-  event.preventDefault();
-});
-splurgeButton.addEventListener("click", () => {
-  // A disabled button does not run CSS animations on its children, so the
-  // dice stay still. Block repeat clicks without setting disabled.
-  if (splurgeRolling) return;
-  if (!desktopPointer()) searchInput.blur();
-  splurgeRolling = true;
-  splurgeButton.setAttribute("aria-disabled", "true");
-  splurgeButton.classList.remove("rolling");
-  void splurgeButton.offsetWidth;
-  splurgeButton.classList.add("rolling");
-  window.setTimeout(() => {
-    const next = pickSplurgeName(lastSplurge);
-    lastSplurge = next;
-    applySplurgeName(searchInput, next, desktopPointer());
-    syncSearchClear();
-    splurgeButton.classList.remove("rolling");
-    splurgeButton.removeAttribute("aria-disabled");
-    splurgeRolling = false;
-  }, SPLURGE_ROLL_MS);
-});
 
 searchForm.addEventListener("submit", (event) => {
   event.preventDefault();

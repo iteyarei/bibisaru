@@ -113,111 +113,6 @@ header {
   min-width: 0;
 }
 
-.splurge {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 999px;
-  background: #e53935;
-  color: #fff;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 800;
-  line-height: 1;
-  white-space: nowrap;
-  cursor: pointer;
-  overflow: visible;
-  appearance: none;
-}
-
-.splurge-short { display: none; }
-
-.splurge:hover,
-.splurge:focus-visible { background: #c62828; }
-
-.splurge.rolling { cursor: wait; }
-
-.dice {
-  display: inline-flex;
-  align-items: flex-end;
-  gap: 4px;
-  height: 22px;
-  overflow: visible;
-}
-
-.die {
-  display: block;
-  width: 20px;
-  height: 20px;
-  flex: none;
-  overflow: visible;
-  transform-box: fill-box;
-  transform-origin: center;
-}
-
-.die-a { transform: rotate(-12deg); }
-.die-b { transform: rotate(14deg); }
-
-.splurge.rolling .die {
-  /* Duration comes from SPLURGE_ROLL_MS. Fallback matches that constant. */
-  animation: splurge-die var(--splurge-roll, 900ms) ease-in-out 1;
-  will-change: transform;
-}
-
-.splurge.rolling .die-b { animation-name: splurge-die-b; }
-
-@keyframes splurge-die {
-  0% { transform: translateY(0) rotate(-12deg); }
-  18% { transform: translateY(-18px) rotate(20deg); }
-  40% { transform: translateY(0) rotate(-6deg); }
-  58% { transform: translateY(-14px) rotate(16deg); }
-  82%, 100% { transform: translateY(0) rotate(-12deg); }
-}
-
-@keyframes splurge-die-b {
-  0% { transform: translateY(0) rotate(14deg); }
-  18% { transform: translateY(-16px) rotate(-18deg); }
-  40% { transform: translateY(0) rotate(8deg); }
-  58% { transform: translateY(-12px) rotate(-14deg); }
-  82%, 100% { transform: translateY(0) rotate(14deg); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .splurge.rolling .die,
-  .splurge.rolling .die-b {
-    animation-name: splurge-die-soft;
-    animation-duration: var(--splurge-roll, 900ms);
-    animation-timing-function: ease-in-out;
-    animation-iteration-count: 1;
-  }
-}
-
-@keyframes splurge-die-soft {
-  0% { transform: translateY(0) rotate(-8deg); }
-  25% { transform: translateY(-3px) rotate(8deg); }
-  50% { transform: translateY(0) rotate(-6deg); }
-  75% { transform: translateY(-2px) rotate(6deg); }
-  100% { transform: translateY(0) rotate(-8deg); }
-}
-
-@media (max-width: 640px) {
-  .splurge {
-    height: 34px;
-    padding: 0 8px;
-    gap: 4px;
-    font-size: 13px;
-  }
-  .splurge .dice { height: 16px; gap: 2px; }
-  .splurge .die { width: 14px; height: 14px; }
-  .splurge-full { display: none; }
-  .splurge-short { display: inline; }
-}
-
 .search, .ex {
   display: flex;
   align-items: center;
@@ -227,12 +122,6 @@ header {
   border: 1.5px solid var(--ink);
   border-radius: 999px;
   padding: 0 6px 0 16px;
-}
-
-.search { overflow: visible; }
-
-@media (max-width: 640px) {
-  .search { gap: 4px; }
 }
 
 .ex {
