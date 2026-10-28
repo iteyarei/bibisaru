@@ -150,9 +150,16 @@ export function festivalOn(
   return pickFestival(taipeiDayKey(now), FESTIVALS);
 }
 
-/** 節慶吉祥物檔名。小珊照這個名字丟進 `src/assets/festivals/` 就會自動生效。 */
-export function festivalImageName(key: FestivalKey): string {
-  return `bibihou-${key}-1024.png`;
+/**
+ * 節慶吉祥物檔名。小珊照這個名字丟進 `src/assets/festivals/` 就會自動生效。
+ *
+ * 網站上吉祥物最大的地方只有 168px（header 是 56px），所以放 512 那張就夠，
+ * 九張加起來約 2MB，換成 1024 會是 6MB 而肉眼沒有差別。
+ */
+export const FESTIVAL_IMAGE_SIZES: readonly number[] = [512, 1024];
+
+export function festivalImageName(key: FestivalKey, size = FESTIVAL_IMAGE_SIZES[0]): string {
+  return `bibihou-${key}-${size}.png`;
 }
 
 /**
@@ -165,9 +172,13 @@ export function pickFestivalImage(
   files: Readonly<Record<string, string>>,
   festival: Pick<FestivalWindow, "key">,
 ): string | null {
-  const wanted = festivalImageName(festival.key);
-  for (const [path, url] of Object.entries(files)) {
-    if (path.split("/").pop() === wanted && url) return url;
+  // Smallest first: the same picture at half the bytes. A 1024 left over from
+  // before still works, so adding this never breaks an existing deploy.
+  for (const size of FESTIVAL_IMAGE_SIZES) {
+    const wanted = festivalImageName(festival.key, size);
+    for (const [path, url] of Object.entries(files)) {
+      if (path.split("/").pop() === wanted && url) return url;
+    }
   }
   return null;
 }

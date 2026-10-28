@@ -290,11 +290,13 @@ describe("the lunar date table", () => {
 });
 
 describe("image naming and lookup", () => {
-  it("names files bibihou-<key>-1024.png", () => {
-    expect(festivalImageName("halloween")).toBe("bibihou-halloween-1024.png");
-    expect(festivalImageName("lunar-new-year")).toBe("bibihou-lunar-new-year-1024.png");
-    expect(festivalImageName("ghost-festival")).toBe("bibihou-ghost-festival-1024.png");
-    expect(festivalImageName("double-11")).toBe("bibihou-double-11-1024.png");
+  it("names files bibihou-<key>-512.png", () => {
+    // The mascot is never drawn bigger than 168px, so 512 is the size that ships.
+    expect(festivalImageName("halloween")).toBe("bibihou-halloween-512.png");
+    expect(festivalImageName("lunar-new-year")).toBe("bibihou-lunar-new-year-512.png");
+    expect(festivalImageName("ghost-festival")).toBe("bibihou-ghost-festival-512.png");
+    expect(festivalImageName("double-11")).toBe("bibihou-double-11-512.png");
+    expect(festivalImageName("halloween", 1024)).toBe("bibihou-halloween-1024.png");
   });
 
   it("finds the image by file name, whatever the hashed url is", () => {
@@ -302,15 +304,21 @@ describe("image naming and lookup", () => {
       "./assets/festivals/bibihou-halloween-1024.png": "/assets/bibihou-halloween-1024-a1b2.png",
       "./assets/festivals/bibihou-halloween-512.png": "/assets/bibihou-halloween-512-c3d4.png",
     };
-    expect(pickFestivalImage(files, { key: "halloween" })).toBe(
-      "/assets/bibihou-halloween-1024-a1b2.png",
-    );
+    // 512 wins when both are there: half the bytes, same picture on screen.
+    expect(pickFestivalImage(files, { key: "halloween" })).toBe("/assets/bibihou-halloween-512-c3d4.png");
+    // A leftover 1024 still works, so adding 512 cannot break a deploy.
+    expect(
+      pickFestivalImage(
+        { "./assets/festivals/bibihou-halloween-1024.png": "/assets/bibihou-halloween-1024-a1b2.png" },
+        { key: "halloween" },
+      ),
+    ).toBe("/assets/bibihou-halloween-1024-a1b2.png");
   });
 
   it("returns null when that festival has no image yet", () => {
     expect(pickFestivalImage({}, { key: "halloween" })).toBeNull();
     expect(
-      pickFestivalImage({ "./assets/festivals/bibihou-christmas-1024.png": "/x.png" }, { key: "halloween" }),
+      pickFestivalImage({ "./assets/festivals/bibihou-christmas-512.png": "/x.png" }, { key: "halloween" }),
     ).toBeNull();
   });
 });
@@ -318,7 +326,7 @@ describe("image naming and lookup", () => {
 describe("activeFestivalImage: no image means no switch", () => {
   const empty = {};
   const halloweenOnly = {
-    "./assets/festivals/bibihou-halloween-1024.png": "/assets/bibihou-halloween-1024-abc.png",
+    "./assets/festivals/bibihou-halloween-512.png": "/assets/bibihou-halloween-512-abc.png",
   };
 
   it("stays on the normal mascot while the folder is empty", () => {
@@ -334,7 +342,7 @@ describe("activeFestivalImage: no image means no switch", () => {
         startDate: "2026-10-26",
         endDate: "2026-10-31",
       },
-      url: "/assets/bibihou-halloween-1024-abc.png",
+      url: "/assets/bibihou-halloween-512-abc.png",
     });
   });
 

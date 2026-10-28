@@ -212,10 +212,14 @@ npx wrangler secret put COUPANG_SECRET_KEY --config workers/fetch-proxy/wrangler
 
 ### 換圖
 
-圖放進 `src/assets/festivals/`，檔名 `bibihou-<key>-1024.png`（例如 `bibihou-halloween-1024.png`）。
+圖放進 `src/assets/festivals/`，檔名 `bibihou-<key>-512.png`（例如 `bibihou-halloween-512.png`）。
 `src/festival-mascot.ts` 用 `import.meta.glob` 依檔名比對，**丟進去、重新部署就會自動生效**，
 不用改任何程式。目錄是空的時候就算當天有節慶也不會切換，所以不會破圖；圖載入失敗也會退回
-`/mascot.png`。只認 1024 那張，若同時有 512 或 icon 仍然以 1024 為主。
+`/mascot.png`。
+
+用 512 是因為網站上吉祥物最大只畫到 168px（header 是 56px），1024 那張在畫面上看不出差別，
+九張卻要 6MB、512 只要 2MB。挑圖時 512 優先，沒有 512 才退回 1024，所以留著舊的 1024 不會壞。
+icon-180 是給 App 圖示用的，網頁用不到。
 
 ### 開關
 
