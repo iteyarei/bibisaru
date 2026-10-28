@@ -399,19 +399,11 @@ function renderHotKeywords(): void {
       for (const item of group.items) {
         const link = document.createElement("a");
         link.className = "hot-chip";
+        // A real link to the keyword's own landing page, which is server rendered
+        // and carries the per-keyword title, description and canonical.
         link.href = hotKeywordPath(item.keyword);
         link.textContent = item.keyword;
         link.title = item.reason;
-        link.addEventListener("click", (event) => {
-          if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
-          event.preventDefault();
-          searchInput.value = item.keyword;
-          syncSearchClear();
-          hideHotPop();
-          searchInput.blur();
-          window.scrollTo(0, 0);
-          void runSearch(item.keyword, true);
-        });
         list.append(link);
       }
       wrap.append(head, list);
