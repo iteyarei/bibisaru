@@ -99,6 +99,31 @@ npx wrangler secret put COUPANG_SECRET_KEY --config workers/fetch-proxy/wrangler
 
 能判斷庫存的店，已售完的商品預設不列出：momo（`goodsStock` 為 0）、Yahoo（`ec_has_stock` 為 0 或庫存數為 0）、全聯（`is_sold_out` 或庫存為 0）、東森（`haveStocks` 為 false）、金石堂（按鈕是「貨到通知」）、三民（標成「無庫存」）、樂天（只列 `itemStatus` 為 `Available`）、露天（`StockQty` 為 0 或不是直購）。PChome 的搜尋 JSON 沒有庫存欄位，無法判斷，所以照頁面上的結果列出。酷澎、蝦皮目前多半是前往搜尋，沒有可判斷的庫存。
 
+## 熱門比價頁（/k/）
+
+每個熱門關鍵字有自己的靜態網址，例如 <https://bibisaru.pages.dev/k/chushiji/>。`functions/k/[[path]].ts` 在伺服器端先抓好商品、排好價，再把整頁 HTML 送出去，所以搜尋引擎和沒有開 JavaScript 的人都看得到完整內容。`/k/` 是總覽，依分類列出本週的熱門關鍵字。
+
+每一頁有自己固定的 slug，對照表在 `shared/k-slugs.json`。**已經發布的 slug 永遠不改**，改了等於讓那一頁的排名歸零。新增熱門關鍵字時要一起加一筆；`npm run build` 前的 `scripts/check-k-slugs.mjs` 會擋下沒有 slug、重複或不合法 slug 的建置。
+
+從熱門清單退下來的關鍵字**不會刪頁**：
+
+- slug 留在 `k-slugs.json`，頁面繼續在原網址回應 200，不會 404，也不會轉址。
+- 不再每天重抓，改顯示 `shared/k-snapshots.json` 裡最後一次的存檔價格，日期就用存檔當天。檔案格式是 `{ "<slug>": { "date": "YYYY/MM/DD", "category": "3C", "products": [...] } }`，商品欄位和 `/api/search` 一樣。
+- sitemap 的 `lastmod` 用存檔日，不是當天，才不會讓爬蟲每天重抓一個凍結的頁面。
+- 總覽頁把它收在「其他比價頁」，不混進本週熱門。
+
+所以換季時要做的事只有兩件：把關鍵字從 `shared/hot-keywords.json` 拿掉，順手把它最後一次的結果貼進 `k-snapshots.json`。沒貼也不會壞，只是那一頁會說「這一頁沒有留下存檔商品」。
+
+## 價格新鮮度
+
+頁面送出的 HTML 是伺服器剛抓的價格（邊緣快取約 3 分鐘）。瀏覽器一打開就自己再問一次 `/api/search`：
+
+1. 先顯示「正在取得最新價格…」，列表淡掉，避免把舊價格當成現在的最終價。
+2. 成功：整份列表、價格和「價格為 YYYY/MM/DD 查詢」那行一起換成這次抓到的時間。
+3. 失敗：保留原本的存檔，改成「目前無法取得最新價格，以下為 X 月 X 日資料」。
+
+每頁都有一顆「看即時比價」按鈕，連到 `/?q=<keyword>` 走完整的即時搜尋。這顆按鈕和整段更新腳本都在 `shared/k-page.ts`。
+
 ## 這台機器實測（2026-10-12）
 
 關鍵字「耳機」，每個平台各請求一次。

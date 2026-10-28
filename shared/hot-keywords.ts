@@ -1,4 +1,5 @@
 import data from "./hot-keywords.json";
+import { kPathForKeyword } from "./k-slugs";
 import { normalizeQuery } from "./query";
 
 export interface HotKeyword {
@@ -26,8 +27,13 @@ export function validateHotKeywords(input: unknown): HotKeyword[] {
 
 export const HOT_KEYWORDS: HotKeyword[] = validateHotKeywords(data);
 
+/**
+ * Where a hot keyword chip points: its own static landing page.
+ * A keyword that has no slug yet falls back to the live search so the chip
+ * never goes nowhere; a test fails the build before that can ship.
+ */
 export function hotKeywordPath(keyword: string): string {
-  return `/?q=${encodeURIComponent(normalizeQuery(keyword) ?? keyword.trim())}`;
+  return kPathForKeyword(keyword) ?? `/?q=${encodeURIComponent(normalizeQuery(keyword) ?? keyword.trim())}`;
 }
 
 export function groupHotKeywords(list: HotKeyword[]): { category: string; items: HotKeyword[] }[] {
