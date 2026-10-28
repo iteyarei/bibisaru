@@ -14,6 +14,7 @@ import { applySplurgeName, pickSplurgeName, SPLURGE_ROLL_MS } from "../shared/sp
 import type { PlatformId, SearchResponse, SortMode } from "../shared/types";
 import { groupHotKeywords, HOT_KEYWORDS, hotKeywordPath } from "../shared/hot-keywords";
 import { bindClearButton } from "./clear-field";
+import { bindHotPopClose, createHotPop } from "./hot-pop";
 import { defaultPrefs, loadPrefs, savePrefs, type Prefs } from "./prefs";
 import { renderNotices, renderStage } from "./render";
 import { BUILD_VERSION } from "./version";
@@ -419,32 +420,36 @@ function renderHotKeywords(): void {
   );
 }
 
-const hotPop = document.querySelector<HTMLElement>("#hot-pop");
-function showHotPop(): void {
-  if (!hotPop || HOT_KEYWORDS.length === 0) return;
-  hotPop.hidden = false;
-  searchInput.setAttribute("aria-expanded", "true");
-}
+const hotPopNode = document.querySelector<HTMLElement>("#hot-pop");
+const hotPop = createHotPop({
+  panel: hotPopNode,
+  input: searchInput,
+  enabled: HOT_KEYWORDS.length > 0,
+});
+const hotPopClose = document.querySelector<HTMLButtonElement>("#hot-pop-close");
+if (hotPopClose) bindHotPopClose(hotPopClose, hotPop);
+
 function hideHotPop(): void {
-  if (!hotPop) return;
-  hotPop.hidden = true;
-  searchInput.setAttribute("aria-expanded", "false");
+  hotPop.hide();
 }
-searchInput.addEventListener("focus", showHotPop);
-searchInput.addEventListener("click", showHotPop);
+searchInput.addEventListener("focus", () => hotPop.onFocus());
+searchInput.addEventListener("click", () => hotPop.onClickBox());
 searchInput.addEventListener("keydown", (event) => {
   if (event.key === "Escape") hideHotPop();
 });
 searchForm.addEventListener("submit", hideHotPop);
 document.addEventListener("pointerdown", (event) => {
   const target = event.target as Node;
-  if (target === searchInput || hotPop?.contains(target)) return;
+  if (target === searchInput || hotPopNode?.contains(target)) return;
   hideHotPop();
 });
 searchForm.addEventListener("focusout", (event) => {
   const next = event.relatedTarget as Node | null;
-  if (next && (next === searchInput || hotPop?.contains(next))) return;
-  if (next) hideHotPop();
+  // Focus staying on the box is not a blur; anything else means the box was left.
+  if (next === searchInput) return;
+  hotPop.onBlur();
+  if (next && hotPopNode?.contains(next)) return;
+  hideHotPop();
 });
 
 renderHotKeywords();

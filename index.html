@@ -92,8 +92,15 @@
             </button>
           </div>
           <div class="hot-pop" id="hot-pop" hidden>
-            <p class="hot-pop-title" id="hot-pop-title"><span aria-hidden="true">🔥</span> 熱門搜尋商品 <span aria-hidden="true">🔥</span></p>
-            <div id="hot-groups" role="group" aria-labelledby="hot-pop-title"></div>
+            <button type="button" class="hot-pop-close" id="hot-pop-close" aria-label="關閉熱門搜尋">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 7l10 10M17 7 7 17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+              </svg>
+            </button>
+            <div class="hot-pop-body">
+              <p class="hot-pop-title" id="hot-pop-title"><span aria-hidden="true">🔥</span> 熱門搜尋商品 <span aria-hidden="true">🔥</span></p>
+              <div id="hot-groups" role="group" aria-labelledby="hot-pop-title"></div>
+            </div>
           </div>
         </form>
       </div>
