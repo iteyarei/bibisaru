@@ -12,6 +12,8 @@ import {
   rakutenProducts,
   rutenProducts,
   rutenSearchIds,
+  yahooProducts,
+  yahooSearchState,
 } from "../shared/normalize";
 import { parsePrice } from "../shared/text";
 import type { Product } from "../shared/types";
@@ -138,6 +140,85 @@ describe("normalizeYahoo", () => {
     expect(products[0].url).toBe(
       `https://product.mchannles.com/redirect_wa.php?k=2IsZi&uid1=bibisaru&tourl=${encodeURIComponent("https://tw.buy.yahoo.com/gdsale/airpods-11986319.html")}`,
     );
+  });
+});
+
+describe("yahooSearchState", () => {
+  const yahooScript = (body: string) => `<script id="isoredux-data" type="mime/invalid">${body}</script>`;
+
+  it("reads an empty hits array as a page understood with no results", () => {
+    const html = yahooScript(JSON.stringify({ search: { ecsearch: { hits: [] } } }));
+    expect(yahooSearchState(html)).toEqual({ understood: true, products: [] });
+    // yahooProducts keeps its contract: [] here, not null.
+    expect(yahooProducts(html)).toEqual([]);
+  });
+
+  it("reads a populated hits array as understood, with products", () => {
+    const html = yahooScript(
+      JSON.stringify({
+        search: {
+          ecsearch: {
+            hits: [
+              {
+                ec_title: "除濕機",
+                ec_price: 3990,
+                ec_image: "https://img.yec.tw/zp/a.jpg",
+                ec_item_url: "https://tw.buy.yahoo.com/gdsale/a-1.html",
+              },
+            ],
+          },
+        },
+      }),
+    );
+    const state = yahooSearchState(html);
+    expect(state.understood).toBe(true);
+    expect(state.products.map((product) => product.title)).toEqual(["除濕機"]);
+    expect(yahooProducts(html)).toEqual(state.products);
+  });
+
+  it("counts a result list the item filter threw away as understood, not as unreadable", () => {
+    // Every hit is an unsafe link or has no price: the parser read the page fine.
+    const html = yahooScript(
+      JSON.stringify({
+        search: {
+          ecsearch: {
+            hits: [{ ec_title: "外部連結", ec_price: 100, ec_item_url: "http://tw.buy.yahoo.com/gdsale/x.html" }],
+          },
+        },
+      }),
+    );
+    expect(yahooSearchState(html)).toEqual({ understood: true, products: [] });
+  });
+
+  it("is not understood when the marker is missing", () => {
+    const html = "<html><body>搜尋結果</body></html>";
+    expect(yahooSearchState(html)).toEqual({ understood: false, products: [] });
+    expect(yahooProducts(html)).toBeNull();
+  });
+
+  it("is not understood when the script block has no closing tag", () => {
+    const html = `<script id="isoredux-data" type="mime/invalid">{"search":{"ecsearch":{"hits":[]}}}`;
+    expect(yahooSearchState(html).understood).toBe(false);
+    expect(yahooProducts(html)).toBeNull();
+  });
+
+  it("is not understood when the JSON does not parse", () => {
+    const html = yahooScript('{"search":{"ecsearch":{"hits":[');
+    expect(yahooSearchState(html).understood).toBe(false);
+    expect(yahooProducts(html)).toBeNull();
+  });
+
+  it("is not understood when hits is not an array", () => {
+    for (const hits of [{ total: 0 }, "0", 0, null, undefined]) {
+      const html = yahooScript(JSON.stringify({ search: { ecsearch: { hits } } }));
+      expect(yahooSearchState(html).understood, String(hits)).toBe(false);
+      expect(yahooProducts(html)).toBeNull();
+    }
+  });
+
+  it("is not understood when ecsearch itself is missing", () => {
+    const html = yahooScript(JSON.stringify({ search: {} }));
+    expect(yahooSearchState(html).understood).toBe(false);
   });
 });
 

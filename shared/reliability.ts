@@ -117,7 +117,8 @@ export function searchCacheControl(
   platforms: readonly { id: PlatformId; status: PlatformStatus }[],
 ): string {
   if (scrapedShopFailed(platforms)) return "no-store";
-  // 奇摩回 0 筆多半是被擋或改版，不寫入 3 分鐘快取
+  // 奇摩的 0 筆是它真的查無此商品（不是被擋），但這種答案不值得壓在邊緣 3 分鐘：
+  // 換個字就該重問，所以照舊不寫入快取。
   if (platforms.some((platform) => platform.status === "empty" && platform.id === "yahoo")) {
     return "no-store";
   }
