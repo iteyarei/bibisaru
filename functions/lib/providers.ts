@@ -10,7 +10,7 @@ import {
   rutenSearchIds,
   yahooProducts,
 } from "../../shared/normalize";
-import { callFetchProxy, fetchProxiedShop, readProxyConfig } from "../../shared/proxy";
+import { callFetchProxy, fetchProxiedShop, PROXY_SHORT_TIMEOUT_MS, readProxyConfig } from "../../shared/proxy";
 import { pxgoAttempt } from "../../shared/pxgo";
 import { MAX_PER_PLATFORM, platformSearchUrl, rawSearchUrl } from "../../shared/platforms";
 import {
@@ -149,18 +149,49 @@ export function looksLikeChallenge(html: string): boolean {
   return /captcha|challenge|verify you are|are you a robot|access denied|請稍後再試|異常流量/i.test(html.slice(0, 200_000));
 }
 
-/** 奇摩先直抓；失敗（非 200 或 0 筆）再改走美國代理 Worker。代理也失敗就回報兩邊原因。 */
+/**
+ * How long an isolate remembers that 奇摩 is unreachable before it spends the
+ * proxy again. 奇摩 answers Cloudflare with HTTP 200 but a page our parser
+ * cannot read, from every colo, so the proxy retry is a 10s detour that ends
+ * the same way. Direct fetches keep happening: the shop is never switched off,
+ * only the second opinion is skipped for a few minutes.
+ */
+export const YAHOO_PROXY_COOLDOWN_MS = 5 * 60_000;
+
+let yahooProxyDownUntil = 0;
+
+/** Tests only: forget the cooldown so each case starts clean. */
+export function resetYahooCooldown(): void {
+  yahooProxyDownUntil = 0;
+}
+
+export function yahooProxyCoolingDown(now: number = Date.now()): boolean {
+  return now < yahooProxyDownUntil;
+}
+
+/**
+ * 奇摩先直抓；失敗（非 200 或 0 筆）再改走美國代理 Worker。代理也失敗就回報兩邊原因。
+ * 剛失敗過的 isolate 會跳過代理那一趟，直接回報直抓的原因。
+ */
 export async function fetchYahooWithFallback(
   query: string,
   direct: PlatformFetcher = fetchYahooDirect,
   config: { url: string; token: string } | null = readProxyConfig(),
   doFetch: typeof fetch = fetch,
+  clock: () => number = Date.now,
 ): Promise<PlatformResult> {
   const first = await direct(query);
   if (first.status === "ok" && first.products.length > 0) return first;
   if (!config) return first;
-  const remote = await callFetchProxy("yahoo", query, config, doFetch);
-  if (remote.result && remote.result.status === "ok" && remote.result.products.length > 0) return remote.result;
+  if (yahooProxyCoolingDown(clock())) {
+    return { ...first, reason: `direct: ${first.reason ?? first.status}; proxy: cooling_down` };
+  }
+  const remote = await callFetchProxy("yahoo", query, config, doFetch, PROXY_SHORT_TIMEOUT_MS);
+  if (remote.result && remote.result.status === "ok" && remote.result.products.length > 0) {
+    yahooProxyDownUntil = 0;
+    return remote.result;
+  }
+  yahooProxyDownUntil = clock() + YAHOO_PROXY_COOLDOWN_MS;
   const proxyReason = remote.result?.reason ?? (remote.result ? remote.result.status : "proxy_failed");
   return { ...first, reason: `direct: ${first.reason ?? first.status}; proxy: ${proxyReason}` };
 }

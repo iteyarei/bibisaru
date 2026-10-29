@@ -13,6 +13,21 @@ export const PXGO_TIMEOUT_MS = 10_000;
 export const PXGO_RETRY_DELAY_MS = 800;
 export const PAGES_REQUEST_LIMIT_MS = 30_000;
 
+/**
+ * How long the /k/ landing page waits for the shops before it renders with
+ * whatever came back. The page is a first paint, not the final word: the
+ * browser then asks /api/search and swaps in the complete list, so a shop that
+ * misses the budget still appears a second later. Without this cap one dead
+ * shop (奇摩) held every landing page for over ten seconds.
+ */
+export const K_PAGE_FETCH_BUDGET_MS = 1_800;
+/**
+ * Extra time, granted once, when the budget ran out and no shop has returned a
+ * single product yet. An empty page is worse than a slow one, so this is the
+ * one case where the page keeps waiting.
+ */
+export const K_PAGE_FETCH_EXTEND_MS = 1_200;
+
 /** Long edge cache. A failed scraped shop is not cached at all. */
 export const SEARCH_CACHE_SECONDS = 180;
 export const SEARCH_CACHE_BROWSER_SECONDS = 30;
