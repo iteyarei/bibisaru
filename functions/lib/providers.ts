@@ -8,7 +8,7 @@ import {
   rakutenProducts,
   rutenProducts,
   rutenSearchIds,
-  yahooProducts,
+  yahooSearchState,
 } from "../../shared/normalize";
 import { callFetchProxy, fetchProxiedShop, PROXY_SHORT_TIMEOUT_MS, readProxyConfig } from "../../shared/proxy";
 import { pxgoAttempt } from "../../shared/pxgo";
@@ -128,7 +128,14 @@ const fetchPchome: PlatformFetcher = (query) =>
     return ok("pchome", query, products);
   });
 
-/** 奇摩直抓。失敗原因帶上 HTTP 狀態碼，解析不到商品時也記下狀態碼與是否像驗證頁。 */
+/**
+ * 奇摩直抓。失敗原因帶上 HTTP 狀態碼，讀不懂這一頁時也記下狀態碼與是否像驗證頁。
+ *
+ * 奇摩對「查無此商品」的關鍵字不是回錯誤，而是 200 加一份讀得完的
+ * `isoredux-data`，其中 `hits` 是空陣列。那是賣場的答案，不是解析失敗，所以
+ * 這裡回 ok 加 0 筆，交給 `searchPlatforms` 自己降級成 `empty`。只有整頁讀不
+ * 懂（沒有 marker、JSON 壞掉、`hits` 不是陣列）才算 `parse_error`。
+ */
 export const fetchYahooDirect: PlatformFetcher = (query) =>
   scrape("yahoo", query, async (fresh) => {
     const response = await request(
@@ -137,12 +144,12 @@ export const fetchYahooDirect: PlatformFetcher = (query) =>
       { fresh },
     );
     if (!response.ok) return httpFailure("yahoo", query, response.status);
-    const products = yahooProducts(response.text);
-    if (!products || products.length === 0) {
+    const state = yahooSearchState(response.text);
+    if (!state.understood) {
       const hint = looksLikeChallenge(response.text) ? " challenge" : "";
       return unavailableResult("yahoo", query, `parse_error http_${response.status}${hint}`);
     }
-    return ok("yahoo", query, products);
+    return ok("yahoo", query, state.products);
   });
 
 export function looksLikeChallenge(html: string): boolean {
@@ -170,8 +177,11 @@ export function yahooProxyCoolingDown(now: number = Date.now()): boolean {
 }
 
 /**
- * 奇摩先直抓；失敗（非 200 或 0 筆）再改走美國代理 Worker。代理也失敗就回報兩邊原因。
- * 剛失敗過的 isolate 會跳過代理那一趟，直接回報直抓的原因。
+ * 奇摩先直抓；真的失敗（非 200、驗證頁、整頁讀不懂）才改走美國代理 Worker。
+ * 代理也失敗就回報兩邊原因；剛失敗過的 isolate 會跳過代理那一趟，直接回報直抓的原因。
+ *
+ * 0 筆不算失敗：直抓回 ok 就代表奇摩回答了，即使商品數是 0。查無商品的關鍵字
+ * 再問代理只會拿到同一份 0 筆，卻要多等一趟 9～12 秒，所以這裡直接回傳。
  */
 export async function fetchYahooWithFallback(
   query: string,
@@ -181,7 +191,8 @@ export async function fetchYahooWithFallback(
   clock: () => number = Date.now,
 ): Promise<PlatformResult> {
   const first = await direct(query);
-  if (first.status === "ok" && first.products.length > 0) return first;
+  // ok 包含 0 筆：那是奇摩的答案，不是失敗，不用再問代理。
+  if (first.status === "ok") return first;
   if (!config) return first;
   if (yahooProxyCoolingDown(clock())) {
     return { ...first, reason: `direct: ${first.reason ?? first.status}; proxy: cooling_down` };

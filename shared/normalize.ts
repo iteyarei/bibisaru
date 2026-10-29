@@ -101,11 +101,30 @@ export function normalizeYahoo(html: string): Product[] {
   return yahooProducts(html) ?? [];
 }
 
-/** `null` when the embedded result list is missing, so the caller can treat it as a failure. */
+/**
+ * `null` when the embedded result list is missing, so the caller can treat it as a failure.
+ *
+ * This cannot tell 「讀不懂這一頁」 from 「這一頁讀懂了，可是查無商品」: both give an
+ * empty list to a caller that only looks at the length. Use `yahooSearchState` when
+ * that difference matters, and it does — Yahoo answers a keyword with no results
+ * by HTTP 200 plus a perfectly readable `isoredux-data` whose `hits` is `[]`.
+ */
 export function yahooProducts(html: string): Product[] | null {
+  const state = yahooSearchState(html);
+  return state.understood ? state.products : null;
+}
+
+/**
+ * Same parse as `yahooProducts`, plus the one bit that one cannot express:
+ * `understood` is true only when the page was read all the way to a `hits` array,
+ * so `{ understood: true, products: [] }` means 「查無此商品」 and must not be
+ * retried or proxied, while `{ understood: false, products: [] }` means the page
+ * was missing, cut short, not JSON, or shaped differently from what we know.
+ */
+export function yahooSearchState(html: string): { understood: boolean; products: Product[] } {
   const found = readYahooHits(html);
-  if (!found) return null;
-  return collect("yahoo", found);
+  if (!found) return { understood: false, products: [] };
+  return { understood: true, products: collect("yahoo", found) };
 }
 
 export function readYahooHits(html: string): Draft[] | null {
