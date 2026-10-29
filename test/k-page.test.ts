@@ -6,10 +6,12 @@ import {
   renderKNotFound,
   renderKOverview,
   renderKPage,
+  hotOverviewItems,
   taipeiDate,
   type KPageData,
 } from "../shared/k-page";
 import type { KPageGroup } from "../shared/k-group";
+import { groupHotKeywords, HOT_KEYWORDS } from "../shared/hot-keywords";
 import { kOverviewUrl, kPageUrl } from "../shared/k-slugs";
 import type { PlatformReport, Product } from "../shared/types";
 
@@ -401,12 +403,18 @@ describe("overview page", () => {
   const html = renderKOverview(TODAY);
 
   it("lists every hot keyword, grouped, linking to its page", () => {
-    expect(html).toContain("<title>熱門比價 — 17 個人氣商品關鍵字 — 比比猴</title>");
+    // 標題的筆數跟著資料走：每週換關鍵字不必回來改測試。
+    // 算的是「有自己比價頁」的關鍵字（overview 只列這些），不是資料檔全部。
+    const total = hotOverviewItems().reduce((sum, group) => sum + group.items.length, 0);
+    expect(html).toContain(`<title>熱門比價 — ${total} 個人氣商品關鍵字 — 比比猴</title>`);
     expect(html).toContain(`<link rel="canonical" href="${kOverviewUrl()}">`);
     for (const path of ["/k/chushiji/", "/k/iphone-18-pro/", "/k/switch-2/", "/k/luguakafei/"]) {
       expect(html).toContain(`href="${path}"`);
     }
-    for (const category of ["家電", "3C", "生活", "食品"]) expect(html).toContain(`<h2>${category}</h2>`);
+    // 分類也跟著資料走：新增分類（例如之後的「節慶熱門」）不用改測試。
+    const categories = groupHotKeywords(HOT_KEYWORDS).map((group) => group.category);
+    expect(categories.length).toBeGreaterThan(0);
+    for (const category of categories) expect(html).toContain(`<h2>${category}</h2>`);
     expect(html).toContain('href="/"');
   });
 

@@ -5,7 +5,10 @@ import { buildSitemap } from "../shared/sitemap";
 
 describe("hot keywords", () => {
   it("data file matches schema", () => {
-    expect(validateHotKeywords(raw)).toHaveLength(17);
+    // 筆數不寫死：每週換關鍵字、之後多「節慶熱門」分類都不該讓測試紅。
+    const valid = validateHotKeywords(raw);
+    expect(valid.length).toBeGreaterThan(0);
+    expect(valid).toHaveLength(raw.length);
     for (const item of raw) expect(Object.keys(item).sort()).toEqual(["category", "keyword", "reason"]);
   });
   it("uses traditional chars", () => {
@@ -21,7 +24,10 @@ describe("hot keywords", () => {
   it("points every chip at its own landing page", () => {
     expect(hotKeywordPath("iPhone 18 Pro")).toBe("/k/iphone-18-pro/");
     expect(hotKeywordPath("除濕機")).toBe("/k/chushiji/");
-    expect(groupHotKeywords(HOT_KEYWORDS).map((g) => g.category)).toEqual(["家電", "3C", "生活", "食品"]);
+    // 分類順序跟著資料檔出現的順序，不寫死清單。
+    const expected = [...new Set(HOT_KEYWORDS.map((item) => item.category))];
+    expect(groupHotKeywords(HOT_KEYWORDS).map((g) => g.category)).toEqual(expected);
+    expect(expected.length).toBeGreaterThan(0);
   });
   it("sitemap lists every keyword landing page", () => {
     const xml = buildSitemap("https://bibisaru.pages.dev");
