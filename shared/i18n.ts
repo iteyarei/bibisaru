@@ -55,6 +55,9 @@ export const zhTW = {
   missingQuery: "請輸入關鍵字",
   rateLimited: "搜尋太頻繁，請稍後再試",
   loading: "搜尋中",
+  /** Shown the instant a hot keyword chip is tapped, before the page leaves. */
+  hotLoading: "正在取得「{word}」的比價資料…",
+  hotLoadingGeneric: "正在取得比價資料…",
   footer: "價格與庫存以各購物平台頁面為準。比比猴不販售商品，也沒有置頂廣告。",
   footnoteLimit: "搜尋結果為各平台搜尋的前幾筆，非該站全部商品。",
   affiliateNote: "部分連結為聯盟行銷分潤連結，不影響您的購買價格。",

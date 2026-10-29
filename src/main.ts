@@ -14,6 +14,7 @@ import type { PlatformId, SearchResponse, SortMode } from "../shared/types";
 import { groupHotKeywords, HOT_KEYWORDS, hotKeywordPath } from "../shared/hot-keywords";
 import { bindClearButton } from "./clear-field";
 import { applyFestivalMascot } from "./festival-mascot";
+import { bindHotChipLoading } from "./hot-loading";
 import { bindHotPopClose, createHotPop } from "./hot-pop";
 import { defaultPrefs, loadPrefs, savePrefs, type Prefs } from "./prefs";
 import { renderNotices, renderStage } from "./render";
@@ -395,6 +396,18 @@ searchInput.addEventListener("keydown", (event) => {
   if (event.key === "Escape") hideHotPop();
 });
 searchForm.addEventListener("submit", hideHotPop);
+
+/**
+ * A chip is a link to a server-rendered page, so a tap can look like nothing
+ * happened for a second or two. This marks the chip and prints the waiting
+ * line on the click itself, closes the panel so the line is not covered on a
+ * phone, and clears both if the reader comes back.
+ */
+bindHotChipLoading({
+  root: document.querySelector<HTMLElement>("#hot-groups"),
+  status: document.querySelector<HTMLElement>("#hot-status"),
+  hidePanel: hideHotPop,
+});
 document.addEventListener("pointerdown", (event) => {
   const target = event.target as Node;
   if (target === searchInput || hotPopNode?.contains(target)) return;

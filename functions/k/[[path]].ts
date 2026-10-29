@@ -1,4 +1,5 @@
 import { handleKPath } from "../../shared/k-route";
+import type { SearchLimits } from "../../shared/search";
 import { PLATFORM_IDS } from "../../shared/platforms";
 import { createRateLimiter } from "../../shared/rate-limit";
 import { normalizeColo } from "../../shared/reliability";
@@ -24,9 +25,18 @@ export const onRequestGet: PagesFunction<KEnv> = async (context) => {
   const result = await handleKPath({
     pathname: url.pathname,
     version: context.env.CF_PAGES_COMMIT_SHA ?? "dev",
+    // The budget comes from the route so one slow shop cannot hold the page;
+    // anything it misses is picked up by the browser refresh right after.
     search: allowLiveFetch(`k:${ip}`, Date.now())
-      ? (keyword) =>
-          searchPlatforms(keyword, PLATFORM_IDS, fetchers, () => new Date(), normalizeColo(context.request.cf?.colo))
+      ? (keyword: string, limits: SearchLimits) =>
+          searchPlatforms(
+            keyword,
+            PLATFORM_IDS,
+            fetchers,
+            () => new Date(),
+            normalizeColo(context.request.cf?.colo),
+            limits,
+          )
       : undefined,
   });
 

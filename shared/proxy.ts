@@ -12,6 +12,12 @@ export type ProxyPlatform = (typeof PROXY_PLATFORMS)[number];
 
 /** Long enough for 全聯's two 10s attempts plus the pause, still under the Pages limit. */
 export const PROXY_CLIENT_TIMEOUT_MS = 25_000;
+/**
+ * 奇摩's proxy hop only ever returns one page, so it needs a fraction of that.
+ * It is a second opinion after a direct fetch already failed; waiting 25s for
+ * it was most of the ten-second landing page.
+ */
+export const PROXY_SHORT_TIMEOUT_MS = 9_000;
 
 export interface ProxyShopResponse {
   fetchColo: string;
@@ -134,6 +140,7 @@ export async function callFetchProxy(
   query: string,
   config: { url: string; token: string },
   doFetch: typeof fetch = fetch,
+  timeoutMs: number = PROXY_CLIENT_TIMEOUT_MS,
 ): Promise<ProxyCall> {
   const base = proxyBaseUrl(config.url);
   const token = cleanProxyToken(config.token);
@@ -149,7 +156,7 @@ export async function callFetchProxy(
         [PROXY_TOKEN_HEADER]: token,
       },
       body: JSON.stringify({ platform, query }),
-      signal: AbortSignal.timeout(PROXY_CLIENT_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (response.status === 401) {
       return {
