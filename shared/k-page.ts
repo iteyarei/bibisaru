@@ -324,11 +324,16 @@ ${options.script ?? ""}
  *
  * The HTML already carries a full server-rendered list, so the page is readable
  * with scripting off. With scripting on, this replaces that snapshot the moment
- * the document is ready: it shows a loading state first (so a stale price never
- * looks final), swaps in the live list and the live query time on success, and
- * on failure keeps the snapshot while saying how old it is.
+ * the document is ready and swaps in the live list and the live query time on
+ * success; on failure it keeps the snapshot while saying how old it is.
+ *
+ * A page that arrived with products refreshes silently. Dimming twenty rows
+ * that are already on screen and captioning them 「正在取得最新價格…」 is what
+ * made a page with the data in hand look like it was still loading for another
+ * five seconds. Only a page that arrived with nothing gets the dim and the
+ * caption, because only there is the loading state the truth.
  */
-function refreshScript(keyword: string, category: string, snapshot: string): string {
+function refreshScript(keyword: string, category: string, snapshot: string, items: boolean): string {
   const plan = matchPlan(keyword);
   const shelf = groupPlan(keyword, category);
   const config = scriptJson({
@@ -336,6 +341,10 @@ function refreshScript(keyword: string, category: string, snapshot: string): str
     platforms: kPagePlatformParam(),
     limit: shelf.limits.main,
     snapshot,
+    // Whether the HTML already carries products. The same boolean decides the
+    // class on #groups when the page is written, taken from one place so the
+    // markup and this script can never disagree about it.
+    items,
     names: Object.fromEntries(PLATFORMS.map((platform) => [platform.id, platform.name])),
     // The same relevance rule the server used, so the refresh cannot
     // reintroduce the last-generation accessories it just dropped.
@@ -414,8 +423,9 @@ function refreshScript(keyword: string, category: string, snapshot: string): str
     return Number(m[1]) === new Date().getFullYear() ? label : Number(m[1]) + " 年 " + label;
   }
   function busy(on){
-    if (fresh) fresh.hidden = !on;
-    if (on) list.classList.add("loading"); else list.classList.remove("loading");
+    var waiting = on && !cfg.items;
+    if (fresh) fresh.hidden = !waiting;
+    if (waiting) list.classList.add("loading"); else list.classList.remove("loading");
   }
   function note(text, warn){
     if (!stamp) return;
@@ -655,6 +665,9 @@ function refreshScript(keyword: string, category: string, snapshot: string): str
       box.appendChild(ul);
       frag.appendChild(box);
     });
+    // One DOM operation: the old rows leave and the new ones arrive together,
+    // so the list never flashes through an empty state on its way to the new
+    // prices.
     list.replaceChildren(frag);
     list.hidden = false;
     if (empty) empty.hidden = true;
@@ -701,9 +714,9 @@ ${data.reason ? `<p class="why">為什麼熱門：${escapeHtml(data.reason)}</p>
 ${data.archived ? `<p class="why">這個關鍵字已經從熱門清單退下來，這一頁保留原本的網址與存檔價格，不會每天重抓；即時價格請點下面的按鈕。</p>` : ""}
 ${introParagraph(data)}
 <a class="cta" href="${escapeHtml(liveSearchPath(data.keyword))}">看即時比價</a>
-<p class="stamp" id="fresh" role="status" aria-live="polite" hidden>正在取得最新價格…</p>
-<p class="stamp" id="stamp"${hasItems ? "" : " hidden"} data-snapshot="${escapeHtml(snapshot)}">價格為 ${escapeHtml(snapshot)} 查詢，實際依各賣場為準</p>
-<div class="groups loading" id="groups" data-snapshot="${escapeHtml(snapshot)}"${hasItems ? "" : " hidden"}>${list}</div>
+${hasItems ? "" : `<p class="stamp" id="fresh" role="status" aria-live="polite" hidden>正在取得最新價格…</p>
+`}<p class="stamp" id="stamp"${hasItems ? "" : " hidden"} data-snapshot="${escapeHtml(snapshot)}">價格為 ${escapeHtml(snapshot)} 查詢，實際依各賣場為準</p>
+<div class="groups${hasItems ? "" : " loading"}" id="groups" data-snapshot="${escapeHtml(snapshot)}"${hasItems ? "" : " hidden"}>${list}</div>
 <p class="empty" id="empty"${hasItems ? " hidden" : ""}>${data.archived ? "這一頁沒有留下存檔商品，點上面的「看即時比價」可以直接查目前價格。" : "各賣場這次沒回傳商品，可以先看上面的即時比價，或稍後再回來。"}</p>
 <p class="more"><a href="/k/">看更多熱門比價</a> · <a href="/">回首頁</a></p>
 </main>`;
@@ -713,7 +726,7 @@ ${introParagraph(data)}
     canonical,
     body,
     extraHead: `${structuredData(data, canonical)}\n`,
-    script: refreshScript(data.keyword, data.category, snapshot),
+    script: refreshScript(data.keyword, data.category, snapshot, hasItems),
   });
 }
 

@@ -23,13 +23,14 @@ interface Stub {
   addEventListener?: (type: string, handler: () => void) => void;
 }
 
-function element(id = "", tag = "div"): Stub {
-  const classes = new Set<string>();
+function element(id = "", tag = "div", seed: { className?: string; hidden?: boolean } = {}): Stub {
+  const className = seed.className ?? "";
+  const classes = new Set(className.split(" ").filter(Boolean));
   const node: Stub = {
     tag,
-    className: id === "groups" ? "groups loading" : "",
+    className,
     textContent: id === "stamp" ? "價格為 2024/01/15 查詢，實際依各賣場為準" : "",
-    hidden: id === "fresh",
+    hidden: seed.hidden ?? (id === "fresh"),
     dataset: { snapshot: "2024/01/15" },
     attributes: {},
     children: [],
@@ -56,8 +57,33 @@ function element(id = "", tag = "div"): Stub {
       node.attributes[name] = value;
     },
   };
-  if (id === "groups") classes.add("groups"), classes.add("loading");
   return node;
+}
+
+/**
+ * The four facts the script used to assume and now has to agree with the server
+ * about: whether #groups ships dimmed, whether it ships hidden, whether the
+ * 「正在取得最新價格…」 line exists at all, and which of #stamp/#empty is shown.
+ * Read back off the real HTML so the double can never claim a state the page
+ * does not actually have.
+ */
+interface Markup {
+  groupsClass: string;
+  groupsHidden: boolean;
+  fresh: boolean;
+  stampHidden: boolean;
+  emptyHidden: boolean;
+}
+
+function markupOf(html: string): Markup {
+  const tag = /<div class="([^"]*)" id="groups"[^>]*>/.exec(html);
+  return {
+    groupsClass: tag ? tag[1] : "",
+    groupsHidden: tag ? tag[0].includes("hidden") : false,
+    fresh: /<p class="stamp" id="fresh"/.test(html),
+    stampHidden: /<p class="stamp" id="stamp" hidden/.test(html),
+    emptyHidden: /<p class="empty" id="empty" hidden/.test(html),
+  };
 }
 
 /** Every listing on the page, across every section. */
@@ -111,6 +137,11 @@ function page(): KPageData {
   };
 }
 
+/** The same page with nothing on it: what a landing page shows when every shop failed. */
+function blankPage(): KPageData {
+  return { ...page(), products: [], platforms: [report("momo", "unavailable")] };
+}
+
 function scriptOf(html: string): string {
   const open = html.lastIndexOf("<script>");
   return html.slice(open + "<script>".length, html.lastIndexOf("</script>"));
@@ -119,17 +150,22 @@ function scriptOf(html: string): string {
 interface Harness {
   list: Stub;
   stamp: Stub;
-  fresh: Stub;
+  /** Absent on a page that shipped with products: the line is not in its HTML. */
+  fresh: Stub | null;
+  empty: Stub;
   fire: () => void;
   requested: string[];
 }
 
-function mount(script: string, reply: () => Promise<unknown>): Harness {
-  const list = element("groups");
-  const stamp = element("stamp");
-  const fresh = element("fresh");
-  const empty = element("empty");
-  const byId: Record<string, Stub> = { groups: list, stamp, fresh, empty };
+function mount(html: string, reply: () => Promise<unknown>): Harness {
+  const markup = markupOf(html);
+  const list = element("groups", "div", { className: markup.groupsClass, hidden: markup.groupsHidden });
+  const stamp = element("stamp", "p", { hidden: markup.stampHidden });
+  const fresh = markup.fresh ? element("fresh", "p", { hidden: true }) : null;
+  const empty = element("empty", "p", { hidden: markup.emptyHidden });
+  const byId: Record<string, Stub> = { groups: list, stamp, empty };
+  if (fresh) byId.fresh = fresh;
+  const script = scriptOf(html);
   const requested: string[] = [];
   let ready: (() => void) | null = null;
 
@@ -152,14 +188,14 @@ function mount(script: string, reply: () => Promise<unknown>): Harness {
   };
 
   new Function("document", "fetch", script)(document, fetch);
-  return { list, stamp, fresh, fire: () => ready?.(), requested };
+  return { list, stamp, fresh, empty, fire: () => ready?.(), requested };
 }
 
 describe("the inline refresh draws the same shelves as the server", () => {
   /** A live answer, drawn by the script, read back section by section. */
   async function afterRefresh(keyword: string, category: string, results: unknown[]) {
     const source: KPageData = { ...page(), keyword, slug: "x", category, products: [] };
-    const harness = mount(scriptOf(renderKPage(source)), async () => ({
+    const harness = mount(renderKPage(source), async () => ({
       fetchedAt: "2026-10-28T04:00:00.000Z",
       results,
     }));
@@ -322,19 +358,56 @@ describe("the inline refresh draws the same shelves as the server", () => {
 
 describe("the inline refresh, actually run", () => {
   it("waits for DOMContentLoaded, then asks /api/search once", async () => {
-    const harness = mount(scriptOf(renderKPage(page())), async () => ({ results: [] }));
+    const harness = mount(renderKPage(page()), async () => ({ results: [] }));
     expect(harness.requested).toHaveLength(0);
     harness.fire();
     expect(harness.requested).toHaveLength(1);
     expect(harness.requested[0]).toContain("/api/search?q=Switch%202");
-    // It shows the loading state right away, before any answer arrives.
-    expect(harness.fresh.hidden).toBe(false);
-    expect(harness.list.classList.contains("loading")).toBe(true);
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
 
+  it("refreshes a page that already has products without dimming it or saying it is loading", async () => {
+    // The reader already has twenty rows on screen. Asking for fresh prices must
+    // look like nothing at all, not like the page is loading a second time.
+    const source = page();
+    const html = renderKPage(source);
+    const markup = markupOf(html);
+    expect(markup.groupsClass).toBe("groups");
+    expect(markup.fresh).toBe(false);
+
+    let answer: (body: unknown) => void = () => {};
+    const harness = mount(html, () => new Promise((resolve) => (answer = resolve)));
+    harness.fire();
+
+    // Mid-flight: no dim, no loading line, and the list is still the readable one.
+    expect(harness.list.classList.contains("loading")).toBe(false);
+    expect(harness.list.className).toBe("groups");
+    expect(harness.fresh).toBeNull();
+    expect(harness.list.hidden).toBe(false);
+
+    answer({ fetchedAt: "2026-10-28T04:00:00.000Z", results: [] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    // Still not dimmed after it gives up on an empty answer.
+    expect(harness.list.classList.contains("loading")).toBe(false);
+    expect(harness.stamp.textContent).toContain("目前無法取得最新價格");
+  });
+
+  it("still shows the dim and the loading line on a page that arrived with nothing", async () => {
+    const html = renderKPage(blankPage());
+    const markup = markupOf(html);
+    expect(markup.groupsClass).toBe("groups loading");
+    expect(markup.groupsHidden).toBe(true);
+    expect(markup.fresh).toBe(true);
+
+    const harness = mount(html, () => new Promise(() => {}));
+    harness.fire();
+    // Honest here: there is nothing on screen yet, so saying so is the truth.
+    expect(harness.fresh?.hidden).toBe(false);
+    expect(harness.list.classList.contains("loading")).toBe(true);
+  });
+
   it("replaces the snapshot prices and the query time with the live ones", async () => {
-    const harness = mount(scriptOf(renderKPage(page())), async () => ({
+    const harness = mount(renderKPage(page()), async () => ({
       fetchedAt: "2026-10-28T04:00:00.000Z",
       results: [
         { platform: "pchome", title: "Switch 2 主機 即時商品", price: 4_490, image: "https://img.test/a.jpg", url: "https://24h.pchome.com.tw/prod/1" },
@@ -354,13 +427,16 @@ describe("the inline refresh, actually run", () => {
     expect(harness.stamp.textContent).toBe("價格為 2026/10/28 查詢，實際依各賣場為準");
     expect(harness.stamp.textContent).not.toContain("2024");
     expect(harness.stamp.classList.contains("idle")).toBe(false);
-    // Loading is over.
-    expect(harness.fresh.hidden).toBe(true);
+    // Loading is over — and there was never a loading line on this page anyway.
+    expect(harness.fresh).toBeNull();
     expect(harness.list.classList.contains("loading")).toBe(false);
+    // The swap is one replaceChildren of the whole list, so the rows a reader is
+    // looking at are never removed before their replacements exist.
+    expect(harness.stamp.hidden).toBe(false);
   });
 
   it("keeps the snapshot and says how old it is when the fetch fails", async () => {
-    const harness = mount(scriptOf(renderKPage(page())), async () => {
+    const harness = mount(renderKPage(page()), async () => {
       throw new Error("offline");
     });
     const before = itemsOf(harness.list).length;
@@ -373,12 +449,31 @@ describe("the inline refresh, actually run", () => {
     expect(harness.stamp.classList.contains("idle")).toBe(true);
     // The server-rendered list is untouched: stale beats blank.
     expect(itemsOf(harness.list)).toHaveLength(before);
-    expect(harness.fresh.hidden).toBe(true);
+    // A silent refresh must not swallow its own failure: this note is the only
+    // sign the reader gets that the prices on screen are the stale ones.
+    expect(harness.stamp.hidden).toBe(false);
+    expect(harness.fresh).toBeNull();
     expect(harness.list.classList.contains("loading")).toBe(false);
   });
 
+  it("un-dims an empty page and says why when the refresh fails", async () => {
+    // The no-items path keeps its old shape end to end: it dimmed, so on failure
+    // it must stop dimming, and it must say the prices could not be fetched.
+    const harness = mount(renderKPage(blankPage()), async () => {
+      throw new Error("offline");
+    });
+    harness.fire();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(harness.list.classList.contains("loading")).toBe(false);
+    expect(harness.fresh?.hidden).toBe(true);
+    // Unchanged wording for this path: the snapshot date is still quoted.
+    expect(harness.stamp.textContent).toBe("目前無法取得最新價格，以下為 2024 年 1 月 15 日資料");
+    expect(harness.stamp.hidden).toBe(false);
+    expect(harness.stamp.classList.contains("idle")).toBe(true);
+  });
+
   it("treats an empty or malformed answer as a failure, not as 'no products'", async () => {
-    const harness = mount(scriptOf(renderKPage(page())), async () => ({ results: [] }));
+    const harness = mount(renderKPage(page()), async () => ({ results: [] }));
     harness.fire();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(harness.stamp.textContent).toContain("目前無法取得最新價格");
@@ -386,7 +481,7 @@ describe("the inline refresh, actually run", () => {
   });
 
   it("drops live rows whose title does not carry the keyword", async () => {
-    const harness = mount(scriptOf(renderKPage(page())), async () => ({
+    const harness = mount(renderKPage(page()), async () => ({
       fetchedAt: "2026-10-28T04:00:00.000Z",
       results: [
         { platform: "momo", title: "Switch 保護貼 滿版", price: 190, image: "", url: "https://www.momoshop.com.tw/goods/1" },
@@ -410,7 +505,7 @@ describe("the inline refresh, actually run", () => {
       image: "",
       url: `https://www.ruten.com.tw/item/${i}`,
     }));
-    const harness = mount(scriptOf(renderKPage(page())), async () => ({
+    const harness = mount(renderKPage(page()), async () => ({
       fetchedAt: "2026-10-28T04:00:00.000Z",
       results: [...ruten, { platform: "momo", title: "Switch 2 主機", price: 15_880, image: "", url: "https://www.momoshop.com.tw/goods/9" }],
     }));
@@ -426,7 +521,7 @@ describe("the inline refresh, actually run", () => {
 
   it("keeps an off-keyword row out of a live refresh", async () => {
     const appliance: KPageData = { ...page(), keyword: "除濕機", slug: "chushiji", category: "家電" };
-    const harness = mount(scriptOf(renderKPage(appliance)), async () => ({
+    const harness = mount(renderKPage(appliance), async () => ({
       fetchedAt: "2026-10-28T04:00:00.000Z",
       results: [
         { platform: "pchome", title: "除濕 專用 濾網 副廠", price: 350, image: "", url: "https://24h.pchome.com.tw/prod/A1" },

@@ -357,14 +357,31 @@ describe("progressive enhancement script", () => {
     expect(script).toContain("else start();");
   });
 
-  it("shows a loading state so a snapshot price never looks final", () => {
-    expect(html).toContain("正在取得最新價格…");
-    expect(html).toContain('class="groups loading"');
-    // Hidden in the markup and revealed by the script, so a reader with
-    // scripting off never sees a loading message that never ends.
-    expect(html).toContain('id="fresh" role="status" aria-live="polite" hidden');
+  it("does not dim a page that arrived with products", () => {
+    // 20 rows are already in the HTML. Dimming them to 45% and captioning them
+    // 「正在取得最新價格…」 made a finished page look like it was still loading.
+    expect(html).not.toContain('class="groups loading"');
+    expect(script).not.toContain('class="groups loading"');
+    expect(html).toContain('<div class="groups" id="groups"');
+    // The line is not merely hidden here; it is not in the page at all.
+    expect(html).not.toContain("正在取得最新價格…");
+    expect(html).not.toContain('id="fresh"');
+    // The script still knows how to dim — it just refuses to when items exist.
     expect(script).toContain('list.classList.add("loading")');
     expect(script).toContain("busy(true)");
+    expect(script).toContain('"items":true');
+  });
+
+  it("still dims a page that arrived with nothing", () => {
+    // The honest case: there is no list to protect, so the loading state is true.
+    const empty = renderKPage(data({ products: [], platforms: [report("momo", "unavailable")] }), TODAY);
+    expect(empty).toContain("正在取得最新價格…");
+    expect(empty).toContain('class="groups loading"');
+    expect(empty).toContain('<div class="groups loading" id="groups"');
+    // Hidden in the markup and revealed by the script, so a reader with
+    // scripting off never sees a loading message that never ends.
+    expect(empty).toContain('id="fresh" role="status" aria-live="polite" hidden');
+    expect(empty).toContain('"items":false');
   });
 
   it("rewrites the query-time line to the live fetch time, not the snapshot's", () => {
@@ -390,12 +407,13 @@ describe("progressive enhancement script", () => {
   });
 
   it("stays readable with scripting off: no permanent dimming, no stuck spinner", () => {
-    // The list ships with the loading class so it fades the instant it paints,
-    // but with JS off nothing would ever remove it.
+    // A page with products no longer ships the loading class at all, so there is
+    // nothing to fade; the rule is kept for the empty page, which still does.
     expect(html).toContain("<noscript><style>.groups.loading{opacity:1}</style></noscript>");
     // It must not un-hide [hidden] boxes: that would show "no products" over a real list.
     expect(html).not.toContain(".empty[hidden],ul.list[hidden]");
-    expect(html).toContain('id="fresh" role="status" aria-live="polite" hidden');
+    // No loading line on this page, so nothing can stick when JS never runs.
+    expect(html).not.toContain('id="fresh"');
   });
 });
 
