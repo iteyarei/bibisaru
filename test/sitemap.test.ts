@@ -33,7 +33,8 @@ describe("sitemap", () => {
     const paths = locs(xml).map((loc) => loc.slice(ORIGIN.length));
     expect(paths[0]).toBe("/");
     expect(paths[1]).toBe("/k/");
-    expect(paths).toHaveLength(HOT_KEYWORDS.length + 2);
+    // Every slug keeps its page, so retired keywords stay listed alongside this week's.
+    expect(paths).toHaveLength(new Set(Object.values(KEYWORD_SLUGS)).size + 2);
     for (const item of HOT_KEYWORDS) {
       const slug = KEYWORD_SLUGS[item.keyword];
       expect(paths).toContain(`/k/${slug}/`);
@@ -51,7 +52,7 @@ describe("sitemap", () => {
 
   it("uses today's Taipei date, daily change frequency, and is deterministic", () => {
     expect(xml).toContain("<lastmod>2026-10-28</lastmod>");
-    expect((xml.match(/<changefreq>daily<\/changefreq>/g) ?? []).length).toBe(HOT_KEYWORDS.length + 2);
+    expect((xml.match(/<changefreq>daily<\/changefreq>/g) ?? []).length).toBe(new Set(Object.values(KEYWORD_SLUGS)).size + 2);
     expect(buildSitemap(ORIGIN, TODAY)).toBe(xml);
   });
 
@@ -78,13 +79,13 @@ describe("sitemap", () => {
 });
 
 describe("pages kept after they left the hot list", () => {
-  const slugs = { ...KEYWORD_SLUGS, "暖暖包": "nuannuanbao" };
-  const snapshots = { nuannuanbao: { date: "2024/01/15" } };
+  const slugs = { ...KEYWORD_SLUGS, "暖腳器": "nuanjiaoqi" };
+  const snapshots = { nuanjiaoqi: { date: "2024/01/15" } };
   const xml = buildSitemap(ORIGIN, TODAY);
 
   it("still lists a retired page, dated the day its snapshot was taken", () => {
     const entries = landingEntries(TODAY, slugs, snapshots);
-    const retired = entries.find((entry) => entry.path === "/k/nuannuanbao/");
+    const retired = entries.find((entry) => entry.path === "/k/nuanjiaoqi/");
     expect(retired).toBeDefined();
     // Not today: the page is not regenerated any more, and saying otherwise
     // would have crawlers refetch a frozen page every morning.
@@ -96,12 +97,12 @@ describe("pages kept after they left the hot list", () => {
     const paths = landingEntries(TODAY, slugs, snapshots).map((entry) => entry.path);
     expect(paths).toContain("/k/chushiji/");
     expect(paths).toContain("/k/switch-2/");
-    expect(paths).toContain("/k/nuannuanbao/");
+    expect(paths).toContain("/k/nuanjiaoqi/");
     expect(new Set(paths).size).toBe(paths.length);
   });
 
   it("still emits a clean urlset for the shipped map", () => {
-    expect(xml).not.toContain("nuannuanbao");
-    expect(locs(xml)).toHaveLength(HOT_KEYWORDS.length + 2);
+    expect(xml).not.toContain("nuanjiaoqi");
+    expect(locs(xml)).toHaveLength(new Set(Object.values(KEYWORD_SLUGS)).size + 2);
   });
 });
