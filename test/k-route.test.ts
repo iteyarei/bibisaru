@@ -72,16 +72,16 @@ describe("GET /k/<slug>/", () => {
 
   it("does not search at all when the caller passes no budget", async () => {
     const search = vi.fn(async (query: string) => body(query, [1_000]));
-    const result = await handleKPath({ pathname: "/k/xiwanji/", now: NOW });
+    const result = await handleKPath({ pathname: "/k/diandongyashua/", now: NOW });
     expect(search).not.toHaveBeenCalled();
     expect(result.status).toBe(200);
-    expect(result.body).toContain("洗碗機 比價");
+    expect(result.body).toContain("電動牙刷 比價");
     expect(result.body).toContain("各賣場這次沒回傳商品");
   });
 
   it("honours a body with no products", async () => {
     const result = await handleKPath({
-      pathname: "/k/xiwanji/",
+      pathname: "/k/diandongyashua/",
       now: NOW,
       search: async (query) =>
         body(query, [], [
@@ -99,13 +99,13 @@ describe("GET /k/<slug>/", () => {
       calls += 1;
       return body(query, [100 + calls]);
     };
-    await handleKPath({ pathname: "/k/mianbei/", now: NOW, search });
-    const second = await handleKPath({ pathname: "/k/mianbei/", now: NOW, search });
+    await handleKPath({ pathname: "/k/xiyijing/", now: NOW, search });
+    const second = await handleKPath({ pathname: "/k/xiyijing/", now: NOW, search });
     expect(calls).toBe(1);
     expect(second.body).toContain("NT$101");
 
     // A different deploy id must not read the old build's prices.
-    await handleKPath({ pathname: "/k/mianbei/", now: NOW, version: "abc1234", search });
+    await handleKPath({ pathname: "/k/xiyijing/", now: NOW, version: "abc1234", search });
     expect(calls).toBe(2);
   });
 
@@ -115,8 +115,8 @@ describe("GET /k/<slug>/", () => {
       calls += 1;
       return body(query, [100 + calls]);
     };
-    await handleKPath({ pathname: "/k/reshuiqi/", now: NOW, search });
-    await handleKPath({ pathname: "/k/reshuiqi/", now: new Date(NOW.getTime() + 121_000), search });
+    await handleKPath({ pathname: "/k/fangshairu/", now: NOW, search });
+    await handleKPath({ pathname: "/k/fangshairu/", now: new Date(NOW.getTime() + 121_000), search });
     expect(calls).toBe(2);
   });
 });
@@ -214,8 +214,8 @@ describe("topProducts", () => {
 describe("a keyword that left the hot list but kept its slug", () => {
   // Stand-in for a keyword that was retired years ago: the slug is still
   // mapped, the hot list no longer mentions it.
-  const RETIRED_KEYWORD = "暖暖包";
-  const RETIRED_SLUG = "nuannuanbao";
+  const RETIRED_KEYWORD = "暖腳器";
+  const RETIRED_SLUG = "nuanjiaoqi";
   const retiredSlugs = new Map([...Object.entries(KEYWORD_SLUGS), [RETIRED_SLUG, RETIRED_KEYWORD]]);
   const retiredSnapshots = {
     [RETIRED_SLUG]: {
@@ -224,7 +224,7 @@ describe("a keyword that left the hot list but kept its slug", () => {
       products: [
         {
           platform: "momo" as const,
-          title: "暖暖包 10 片入",
+          title: "暖腳器 10 片入",
           price: 89,
           image: "https://img.example.test/nuan.jpg",
           url: "https://www.momoshop.com.tw/goods/nuan",
@@ -232,7 +232,7 @@ describe("a keyword that left the hot list but kept its slug", () => {
         },
         {
           platform: "pchome" as const,
-          title: "暖暖包 24 片入",
+          title: "暖腳器 24 片入",
           price: 199,
           image: "https://img.example.test/nuan2.jpg",
           url: "https://24h.pchome.com.tw/prod/nuan2",
@@ -269,7 +269,7 @@ describe("a keyword that left the hot list but kept its slug", () => {
     // The old URL still canonicalises to itself: no redirect, no lost ranking.
     expect(result.body).toContain(`<link rel="canonical" href="https://bibisaru.pages.dev/k/${RETIRED_SLUG}/">`);
     // Snapshot prices, not today's imaginary ones.
-    expect(result.body).toContain("暖暖包 10 片入");
+    expect(result.body).toContain("暖腳器 10 片入");
     expect(result.body).toContain("NT$89");
     // The date line is the capture date, not today.
     expect(result.body).toContain("價格為 2024/01/15 查詢，實際依各賣場為準");
@@ -287,7 +287,7 @@ describe("a keyword that left the hot list but kept its slug", () => {
       slugs: retiredSlugs,
       snapshots: retiredSnapshots,
     });
-    expect(result.body).toContain('href="/?q=%E6%9A%96%E6%9A%96%E5%8C%85"');
+    expect(result.body).toContain('href="/?q=%E6%9A%96%E8%85%B3%E5%99%A8"');
     expect(result.body).toContain("看即時比價");
     expect(result.body).toContain("/api/search?q=");
     expect(result.body).toContain('"snapshot":"2024/01/15"');
@@ -304,7 +304,7 @@ describe("a keyword that left the hot list but kept its slug", () => {
     expect(result.status).toBe(200);
     expect(result.body).toContain("已經從熱門清單退下來");
     expect(result.body).toContain("看即時比價");
-    expect(result.body).toContain('href="/?q=%E6%9A%96%E6%9A%96%E5%8C%85"');
+    expect(result.body).toContain('href="/?q=%E6%9A%96%E8%85%B3%E5%99%A8"');
   });
 
   it("leaves a slug nobody ever mapped as a 404", async () => {
