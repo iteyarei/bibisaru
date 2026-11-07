@@ -64,6 +64,7 @@ function relevanceScore(title: string, query: string): number {
     const kind = tokenMatchKind(title, token);
     if (kind === "exact") score += 2;
     else if (kind === "segment") score += 1;
+    // A category name such as 方塊酥 for 餅乾 stays in the list and sorts after a title that contains the word itself.
   }
   return score;
 }
