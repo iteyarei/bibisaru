@@ -5,9 +5,15 @@ import type { Product } from "./types";
 export const COUPANG_API_ORIGIN = "https://api-gateway.tw.coupang.com";
 export const COUPANG_API_PATH = "/v2/providers/affiliate_open_api/apis/openapi/products/search";
 export const COUPANG_SUB_ID = "bibisaru";
+/**
+ * Taiwan Partners rejects anything above 10 with `rcode_400: limit is out of range`,
+ * and that failure drops the whole shop. 10 is the most one search can return.
+ */
 export const COUPANG_SEARCH_LIMIT = 10;
 
 const COUPANG_HOST = /(^|\.)coupang\.com$/i;
+/** Taiwan Partners currently returns affiliate links on this host. */
+const COUPANG_ONELINK_HOST = "coupang.onelink.me";
 
 function rawEnv(name: string): string | null | undefined {
   const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
@@ -71,7 +77,8 @@ function coupangProductLink(value: unknown): string | null {
   if (!raw) return null;
   try {
     const parsed = new URL(raw);
-    if (parsed.protocol !== "https:" || !COUPANG_HOST.test(parsed.hostname)) return null;
+    const host = parsed.hostname.replace(/\.$/, "").toLowerCase();
+    if (parsed.protocol !== "https:" || (host !== COUPANG_ONELINK_HOST && !COUPANG_HOST.test(host))) return null;
   } catch {
     return null;
   }

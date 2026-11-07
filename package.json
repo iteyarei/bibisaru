@@ -8,7 +8,8 @@
   },
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173",
-    "build": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.functions.json --noEmit && tsc -p workers/fetch-proxy/tsconfig.json --noEmit && vite build",
+    "build": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.functions.json --noEmit && tsc -p workers/fetch-proxy/tsconfig.json --noEmit && vite build && node scripts/stage-web.mjs && BIBISARU_BUILD=$(git rev-parse --short HEAD) next build",
+    "start": "next start --hostname 0.0.0.0 --port 3310",
     "preview": "vite preview --host 127.0.0.1 --port 4173",
     "test": "vitest run",
     "test:live": "vitest run --config vitest.live.config.ts --reporter=verbose",
@@ -16,8 +17,16 @@
     "prebuild": "node scripts/check-k-slugs.mjs",
     "festival:dates": "node scripts/gen-festival-dates.mjs"
   },
+  "dependencies": {
+    "next": "^15.5.29",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261006.1",
+    "@types/node": "^22.15.21",
+    "@types/react": "^19.1.6",
+    "@types/react-dom": "^19.1.5",
     "lunar-javascript": "^1.7.7",
     "typescript": "^5.9.3",
     "vite": "^6.3.6",

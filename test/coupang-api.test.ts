@@ -183,6 +183,39 @@ describe("coupang partners search", () => {
     expect(productsFromCoupangSearch({ rCode: "0", data: { productData: [] } })).toEqual([]);
   });
 
+  it("keeps a coupang.onelink.me product link and drops any other short host", () => {
+    const kept = productsFromCoupangSearch({
+      rCode: "0",
+      data: {
+        productData: [
+          {
+            productName: "藍牙耳機",
+            productPrice: 590,
+            productUrl: "https://coupang.onelink.me/example?pid=affiliate",
+          },
+        ],
+      },
+    });
+    expect(kept?.[0]?.url).toBe("https://coupang.onelink.me/example?pid=affiliate");
+    expect(productsFromCoupangSearch({
+      rCode: "0",
+      data: {
+        productData: [{ productName: "別站", productPrice: 80, productUrl: "https://evil.onelink.me/example" }],
+      },
+    })).toEqual([]);
+  });
+
+  it("keeps 10 partner rows and drops the 11th", () => {
+    const productData = Array.from({ length: 11 }, (_, index) => ({
+      productName: `耳機 ${index + 1}`,
+      productPrice: 100 + index,
+      productUrl: `https://coupang.onelink.me/example?pid=${index + 1}`,
+    }));
+    const products = productsFromCoupangSearch({ rCode: "0", data: { productData } });
+    expect(products).toHaveLength(10);
+    expect(products?.[9]?.title).toBe("耳機 10");
+  });
+
   it("reports http status, a clipped rMessage, and exceptions without key values", async () => {
     const httpFetch: typeof fetch = async () =>
       new Response(JSON.stringify({ rCode: "0", data: {} }), { status: 503 });

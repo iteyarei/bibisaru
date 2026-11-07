@@ -94,6 +94,65 @@ describe("and match with synonyms", () => {
     expect(tokenMatchKind("象印電鍋", "大同電鍋")).toBe("none");
   });
 
+  it("keeps other names of a category and still requires every word", () => {
+    const snacks = [
+      item("義美餅乾"),
+      item("中祥方塊酥"),
+      item("養生蘇打餅"),
+      item("洋芋片"),
+    ];
+    expect(filterBySearchTerms(snacks, "餅乾").map((product) => product.title)).toEqual([
+      "義美餅乾",
+      "中祥方塊酥",
+      "養生蘇打餅",
+    ]);
+    expect(titleHasEveryTerm("方塊酥 巧克力", "餅乾 巧克力")).toBe(true);
+    expect(titleHasEveryTerm("方塊酥", "餅乾 巧克力")).toBe(false);
+
+    const noodles = [
+      item("農心辛拉麵"),
+      item("統一來一客"),
+      item("一度贊"),
+      item("一度讚"),
+      item("維力 真爽 黑胡椒牛肉風味麵"),
+      item("Indomie 營多麵 香蔥雞風味湯麵"),
+      item("味丹 味味A 香辣牛肉湯麵"),
+      item("金車 漢寶 日式極濃豚骨風味"),
+      item("維力 維力炸醬麵"),
+      item("白飯"),
+      item("原味麵包"),
+      item("高筋麵粉"),
+      item("義大利麵"),
+      item("涼麵"),
+    ];
+    expect(filterBySearchTerms(noodles, "泡麵").map((product) => product.title)).toEqual([
+      "農心辛拉麵",
+      "統一來一客",
+      "一度贊",
+      "一度讚",
+      "維力 真爽 黑胡椒牛肉風味麵",
+      "Indomie 營多麵 香蔥雞風味湯麵",
+      "味丹 味味A 香辣牛肉湯麵",
+      "金車 漢寶 日式極濃豚骨風味",
+      "維力 維力炸醬麵",
+    ]);
+    expect(titleHasEveryTerm("維力 真爽 黑胡椒牛肉風味麵", "泡麵 牛肉")).toBe(true);
+    expect(titleHasEveryTerm("統一來一客", "泡麵 牛肉")).toBe(false);
+    expect(titleHasEveryTerm("泡麵", "來一客")).toBe(false);
+    expect(titleHasEveryTerm("統一泡麵", "漢寶")).toBe(false);
+    expect(titleHasEveryTerm("冰箱", "電視")).toBe(false);
+
+    const visible = prepareResults(
+      [item("中祥方塊酥", 30), item("義美小餅乾", 80), item("象印電鍋", 2000)],
+      { keywords: ["二手"], platforms: ["momo"], sort: "relevance", query: "餅乾" },
+    );
+    expect(visible.map((product) => product.title)).toEqual(["義美小餅乾", "中祥方塊酥"]);
+    expect(prepareResults(
+      [item("二手方塊酥", 20), item("義美餅乾", 40)],
+      { keywords: ["二手"], platforms: ["momo"], sort: "price-asc", query: "餅乾" },
+    ).map((product) => product.title)).toEqual(["義美餅乾"]);
+  });
+
   it("recomputes the lowest price after dropping titles that miss a word", () => {
     const visible = prepareResults(
       [item("鬼武者", 500), item("鬼武者 Switch 2", 1800), item("鬼武者 NS2", 2400)],
