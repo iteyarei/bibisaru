@@ -126,3 +126,44 @@ code {
   font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   font-size: 0.92em;
 }
+
+.products {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.products a {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid var(--line);
+  color: inherit;
+  text-decoration: none;
+}
+
+.products img,
+.ph {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  background: #f6f1e8;
+}
+
+.products .name,
+.products .price {
+  display: block;
+}
+
+.products .name {
+  font-weight: 650;
+}
+
+.products .price {
+  margin-top: 4px;
+}

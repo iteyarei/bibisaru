@@ -84,12 +84,44 @@ describe("賣場連線測試", () => {
     );
     expect(calls[0]?.init.redirect).toBe("follow");
     expect(calls[0]?.init.cache).toBe("no-store");
-    expect(report).toMatchObject({ sent: true, httpStatus: 200, parsed: true, count: 1, ok: true, reason: null });
+    expect(report).toMatchObject({ sent: true, httpStatus: 200, parsed: true, count: 1, ok: true, reason: null, emptyCause: null });
+    expect(report.products[0]).toMatchObject({ title: "大同電鍋", price: 2480 });
     const body = JSON.stringify(report);
     expect(body).not.toContain("test-access-key");
     expect(body).not.toContain("coupang-test-secret");
     expect(body).not.toContain(SIGNATURE);
-    expect(body).not.toContain("大同電鍋");
+  });
+
+  it("tells an empty Coupang catalog from rows that cannot be listed", async () => {
+    const keys = { accessKey: "test-access-key", secretKey: "coupang-test-secret" };
+    const empty = await probeShop("coupang", "耳機", {
+      ...keys,
+      fetchImpl: async () => Response.json({ rCode: "0", data: { productData: [] } }),
+    });
+    expect(empty).toMatchObject({ ok: true, parsed: true, count: 0, emptyCause: "no_rows", rawRows: 0, reason: "empty_no_rows" });
+    expect(empty.products).toEqual([]);
+
+    const unusable = await probeShop("coupang", "耳機", {
+      ...keys,
+      fetchImpl: async () => Response.json({
+        rCode: "0",
+        data: {
+          productData: [
+            { productName: "", productPrice: 100, productUrl: "https://link.tw.coupang.com/re2/AFFSDP?pageKey=1" },
+            { productName: "沒有售價", productPrice: 0, productUrl: "https://link.tw.coupang.com/re2/AFFSDP?pageKey=2" },
+            { productName: "外站", productPrice: 80, productUrl: "https://evil.example/item" },
+          ],
+        },
+      }),
+    });
+    expect(unusable).toMatchObject({
+      ok: true,
+      count: 0,
+      emptyCause: "rows_unusable",
+      rawRows: 3,
+      skipped: { title: 1, price: 1, url: 1, duplicate: 0 },
+    });
+    expect(JSON.stringify(unusable)).not.toContain("coupang-test-secret");
   });
 
   it("does not call Coupang when a key is missing, and redacts keys from failures", async () => {
@@ -161,6 +193,8 @@ describe("賣場連線測試", () => {
     expect(headers.get("referer")).toBe("https://www.rakuten.com.tw/");
     expect(headers.get("user-agent")).toContain("Chrome/131.0.0.0");
     expect(report).toMatchObject({ sent: true, httpStatus: 200, parsed: true, count: 1, ok: true, reason: null });
+    expect(report.products[0]?.title).toBe("有線耳機");
+    expect(report.products[0]?.price).toBe(160);
     expect(JSON.stringify(report)).not.toContain("evil.example");
   });
 

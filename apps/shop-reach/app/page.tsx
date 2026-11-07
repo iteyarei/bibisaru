@@ -4,6 +4,20 @@ import { useEffect, useState } from "react";
 
 type ShopName = "coupang" | "rakuten";
 
+interface ShownProduct {
+  title: string;
+  price: number;
+  image: string;
+  url: string;
+}
+
+interface RowSkips {
+  title: number;
+  price: number;
+  url: number;
+  duplicate: number;
+}
+
 interface ProbeReport {
   platform: ShopName | null;
   testedAt: string;
@@ -13,6 +27,10 @@ interface ProbeReport {
   count: number | null;
   ok: boolean;
   reason: string | null;
+  products: ShownProduct[];
+  emptyCause: "no_rows" | "rows_unusable" | null;
+  rawRows: number | null;
+  skipped: RowSkips | null;
 }
 
 interface SessionState {
@@ -68,6 +86,10 @@ export default function Page() {
           count: typeof body.count === "number" ? body.count : null,
           ok: body.ok === true,
           reason: typeof body.reason === "string" ? body.reason : response.ok ? null : `http_${response.status}`,
+          products: shownProducts(body.products),
+          emptyCause: body.emptyCause === "no_rows" || body.emptyCause === "rows_unusable" ? body.emptyCause : null,
+          rawRows: typeof body.rawRows === "number" ? body.rawRows : null,
+          skipped: shownSkips(body.skipped),
         },
       }));
     } catch {
@@ -82,6 +104,10 @@ export default function Page() {
           count: null,
           ok: false,
           reason: "exception: 頁面無法完成這次請求",
+          products: [],
+          emptyCause: null,
+          rawRows: null,
+          skipped: null,
         },
       }));
     } finally {
@@ -163,10 +189,54 @@ function Result({ title, report }: { title: string; report: ProbeReport | undefi
         <dt>商品筆數</dt>
         <dd>{report?.count ?? "—"}</dd>
         <dt>原因</dt>
-        <dd>{report?.reason ? explain(report.reason) : "—"}</dd>
+        <dd>{report?.reason ? explain(report.reason, title, report) : "—"}</dd>
       </dl>
+      {report && report.products.length > 0 ? <ProductList products={report.products} /> : null}
     </article>
   );
+}
+
+function ProductList({ products }: { products: readonly ShownProduct[] }) {
+  return (
+    <ul className="products">
+      {products.map((product) => (
+        <li key={product.url}>
+          <a href={product.url} target="_blank" rel="noopener noreferrer nofollow sponsored">
+            {product.image ? <img src={product.image} alt="" width={72} height={72} /> : <span className="ph" />}
+            <span>
+              <span className="name">{product.title}</span>
+              <span className="price">{formatPrice(product.price)}</span>
+            </span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function formatPrice(amount: number): string {
+  return `$${new Intl.NumberFormat("zh-TW").format(amount)}`;
+}
+
+function shownProducts(value: unknown): ShownProduct[] {
+  if (!Array.isArray(value)) return [];
+  const products: ShownProduct[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    if (typeof row.title !== "string" || typeof row.price !== "number" || !Number.isFinite(row.price)) continue;
+    if (typeof row.url !== "string" || !row.url.startsWith("https://")) continue;
+    const image = typeof row.image === "string" && row.image.startsWith("https://") ? row.image : "";
+    products.push({ title: row.title, price: row.price, image, url: row.url });
+  }
+  return products;
+}
+
+function shownSkips(value: unknown): RowSkips | null {
+  if (!value || typeof value !== "object") return null;
+  const row = value as Record<string, unknown>;
+  const count = (name: string) => (typeof row[name] === "number" && Number.isFinite(row[name]) ? (row[name] as number) : 0);
+  return { title: count("title"), price: count("price"), url: count("url"), duplicate: count("duplicate") };
 }
 
 function formatTime(iso: string): string {
@@ -185,7 +255,13 @@ function formatTime(iso: string): string {
   return `${local}（台北） ${iso}`;
 }
 
-function explain(reason: string): string {
+function explain(reason: string, shop: string, report: ProbeReport): string {
+  if (reason === "empty_no_rows") return `${shop}回傳的商品清單是空的，沒有任何一列。`;
+  if (reason === "empty_rows_unusable") {
+    const skipped = report.skipped;
+    if (!skipped || report.rawRows === null) return `${shop}有回傳商品列，但沒有一列可以列出。`;
+    return `${shop}回了 ${report.rawRows} 列，沒有一列同時有品名、售價和可用網址。缺品名 ${skipped.title}、缺售價 ${skipped.price}、網址不能用 ${skipped.url}、重複 ${skipped.duplicate}。`;
+  }
   if (reason.startsWith("missing_keys")) return `酷澎金鑰尚未設定。${reason}`;
   const known: Record<string, string> = {
     preview_only: "預覽環境不會向賣場送出請求。",

@@ -9,13 +9,22 @@ import {
   coupangSignMessage,
   productsFromCoupangSearch,
 } from "../vendor/shared/coupang-api";
-import { rakutenProducts } from "../vendor/shared/normalize";
+import { rakutenProducts, readRakutenItems } from "../vendor/shared/normalize";
 import { rawSearchUrl } from "../vendor/shared/platforms";
+import type { Product } from "../vendor/shared/types";
 import { challengePage } from "./challenge";
+import { coupangRows, type RowSkips } from "./coupang-rows";
 import { decodeBody } from "./decode-body";
 import type { ShopName } from "./gate";
 import { KEYWORD_MAX } from "./gate";
 import { publicText } from "./redact";
+
+export interface ShownProduct {
+  title: string;
+  price: number;
+  image: string;
+  url: string;
+}
 
 export interface ProbeReport {
   platform: ShopName;
@@ -26,6 +35,10 @@ export interface ProbeReport {
   count: number | null;
   ok: boolean;
   reason: string | null;
+  products: ShownProduct[];
+  emptyCause: "no_rows" | "rows_unusable" | null;
+  rawRows: number | null;
+  skipped: RowSkips | null;
 }
 
 export interface ProbeOptions {
@@ -46,8 +59,30 @@ function envOf(): Record<string, string | undefined> {
   return (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
 }
 
-function report(platform: ShopName, fields: Omit<ProbeReport, "platform" | "testedAt">, testedAt = new Date()): ProbeReport {
-  return { platform, testedAt: testedAt.toISOString(), ...fields };
+function report(
+  platform: ShopName,
+  fields: Omit<ProbeReport, "platform" | "testedAt" | "products" | "emptyCause" | "rawRows" | "skipped"> &
+    Partial<Pick<ProbeReport, "products" | "emptyCause" | "rawRows" | "skipped">>,
+  testedAt = new Date(),
+): ProbeReport {
+  return {
+    platform,
+    testedAt: testedAt.toISOString(),
+    products: [],
+    emptyCause: null,
+    rawRows: null,
+    skipped: null,
+    ...fields,
+  };
+}
+
+function shown(products: readonly Product[]): ShownProduct[] {
+  return products.map((product) => ({
+    title: product.title,
+    price: product.price,
+    image: product.image,
+    url: product.url,
+  }));
 }
 
 function held(platform: ShopName, reason: string, testedAt?: Date): ProbeReport {
@@ -149,7 +184,18 @@ async function coupangResult(response: Response, secrets: readonly string[], tes
   }
   const products = productsFromCoupangSearch(payload);
   if (!products) return upstream("coupang", response.status, false, null, "parse_error", testedAt);
-  return upstream("coupang", response.status, true, products.length, null, testedAt);
+  const rows = coupangRows(payload, products.length);
+  const reason = rows.emptyCause === "no_rows"
+    ? "empty_no_rows"
+    : rows.emptyCause === "rows_unusable"
+      ? "empty_rows_unusable"
+      : null;
+  return upstream("coupang", response.status, true, products.length, reason, testedAt, {
+    products: shown(products),
+    emptyCause: rows.emptyCause,
+    rawRows: rows.rawRows,
+    skipped: rows.emptyCause === "rows_unusable" ? rows.skipped : null,
+  });
 }
 
 async function probeRakuten(keyword: string, fetchImpl: typeof fetch, testedAt: Date): Promise<ProbeReport> {
@@ -181,7 +227,13 @@ async function probeRakuten(keyword: string, fetchImpl: typeof fetch, testedAt: 
     if (challengePage(text)) return upstream("rakuten", response.status, false, null, "challenge", testedAt);
     const products = rakutenProducts(text);
     if (!products) return upstream("rakuten", response.status, false, null, "parse_error", testedAt);
-    return upstream("rakuten", response.status, true, products.length, null, testedAt);
+    const items = readRakutenItems(text);
+    const emptyCause = products.length > 0 ? null : items && items.length === 0 ? "no_rows" : "rows_unusable";
+    return upstream("rakuten", response.status, true, products.length, emptyCause ? `empty_${emptyCause}` : null, testedAt, {
+      products: shown(products),
+      emptyCause,
+      rawRows: items?.length ?? null,
+    });
   } catch (error) {
     return report("rakuten", {
       sent: true,
@@ -201,9 +253,21 @@ function upstream(
   count: number | null,
   reason: string | null,
   testedAt: Date,
+  detail: Partial<Pick<ProbeReport, "products" | "emptyCause" | "rawRows" | "skipped">> = {},
 ): ProbeReport {
   const ok = parsed && httpStatus >= 200 && httpStatus < 300;
-  return report(platform, { sent: true, httpStatus, parsed, count, ok, reason }, testedAt);
+  return report(platform, {
+    sent: true,
+    httpStatus,
+    parsed,
+    count,
+    ok,
+    reason,
+    products: detail.products ?? [],
+    emptyCause: detail.emptyCause ?? null,
+    rawRows: detail.rawRows ?? null,
+    skipped: detail.skipped ?? null,
+  }, testedAt);
 }
 
 async function readBody(response: Response): Promise<string> {
