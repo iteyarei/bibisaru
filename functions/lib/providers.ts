@@ -22,6 +22,7 @@ import {
 } from "../../shared/reliability";
 import { unavailableResult } from "../../shared/search";
 import type { PlatformFetcher, PlatformId, PlatformResult, Product } from "../../shared/types";
+import { readShopBody } from "./shop-body";
 
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -33,37 +34,12 @@ const DOCUMENT_HEADERS = {
   "upgrade-insecure-requests": "1",
 };
 
-const MAX_BYTES = 2_000_000;
-
 function withEdgeCache(init: RequestInit): RequestInit {
   if (typeof caches === "undefined") return init;
   const cached = init as RequestInit & { cf?: { cacheTtlByStatus: Record<string, number>; cacheEverything: boolean } };
   // 只快取 2xx；403/5xx 等失敗回應不寫入快取，避免一次被擋就卡 3 分鐘
   cached.cf = { cacheTtlByStatus: { "200-299": 180, "300-599": 0 }, cacheEverything: true };
   return cached;
-}
-
-async function readLimited(response: Response): Promise<string> {
-  if (!response.body) return "";
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  while (total < MAX_BYTES) {
-    const { done, value } = await reader.read();
-    if (done || !value) break;
-    const room = MAX_BYTES - total;
-    chunks.push(value.byteLength > room ? value.subarray(0, room) : value);
-    total += Math.min(value.byteLength, room);
-    if (value.byteLength > room) break;
-  }
-  await reader.cancel().catch(() => undefined);
-  const merged = new Uint8Array(chunks.reduce((sum, chunk) => sum + chunk.byteLength, 0));
-  let offset = 0;
-  for (const chunk of chunks) {
-    merged.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return new TextDecoder().decode(merged);
 }
 
 async function request(
@@ -82,7 +58,7 @@ async function request(
   };
   if (fresh) init.cache = "no-store";
   const response = await fetch(url, !fresh && method === "GET" ? withEdgeCache(init) : init);
-  return { ok: response.ok, status: response.status, text: await readLimited(response) };
+  return { ok: response.ok, status: response.status, text: await readShopBody(response) };
 }
 
 function httpFailure(id: PlatformId, query: string, status: number): PlatformResult {
