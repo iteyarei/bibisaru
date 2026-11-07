@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import { decodeShopBody } from "../functions/lib/shop-body";
 import { readMemoryCache, resetMemoryCache, writeMemoryCache } from "./memory-cache";
 import { handleHome, handleRobots, handleSearch, handleSitemap } from "./routes";
-import { visitorKey } from "./visitor";
+import { createRateLimiter } from "../shared/rate-limit";
+import { visitorKey, withinBudget } from "./visitor";
 
 afterEach(() => {
   resetMemoryCache();
@@ -38,9 +39,22 @@ describe("memory cache", () => {
 });
 
 describe("cursor host routes", () => {
-  it("reads the visitor from the forwarded address", () => {
-    const request = new Request("https://bibisaru.example/", { headers: { "x-forwarded-for": "203.0.113.8, 10.0.0.1" } });
-    expect(visitorKey(request)).toBe("203.0.113.8");
+  it("counts the address the proxy appended, not one the visitor wrote", () => {
+    const request = new Request("https://bibisaru.example/", {
+      headers: { "x-forwarded-for": "203.0.113.8, 198.51.100.20" },
+    });
+    expect(visitorKey(request)).toBe("198.51.100.20");
+    const invented = new Request("https://bibisaru.example/", { headers: { "x-forwarded-for": "not-an-ip" } });
+    const another = new Request("https://bibisaru.example/", { headers: { "x-forwarded-for": "also-not" } });
+    expect(visitorKey(invented)).toBe(visitorKey(another));
+  });
+
+  it("stops a new visitor key from getting a fresh budget once the shared ceiling is spent", () => {
+    const allowVisitor = createRateLimiter(20, 60_000);
+    const allowAll = createRateLimiter(2, 60_000);
+    expect(withinBudget(allowVisitor, allowAll, "198.51.100.1", 1_000)).toBe(true);
+    expect(withinBudget(allowVisitor, allowAll, "198.51.100.2", 1_000)).toBe(true);
+    expect(withinBudget(allowVisitor, allowAll, "198.51.100.3", 1_000)).toBe(false);
   });
 
   it("rejects an empty search without calling a shop", async () => {

@@ -16,7 +16,7 @@ import { searchPlatforms } from "../shared/search";
 import { buildSitemap } from "../shared/sitemap";
 import { SITE_ORIGIN } from "../shared/k-slugs";
 import { readMemoryCache, writeMemoryCache } from "./memory-cache";
-import { visitorKey } from "./visitor";
+import { visitorKey, withinBudget } from "./visitor";
 
 function requestOrigin(request: Request): string {
   const url = new URL(request.url);
@@ -30,8 +30,10 @@ function requestOrigin(request: Request): string {
 /** This host has no Cloudflare colo. The label tells the card where the fetch ran. */
 export const HOST_COLO = "cursor";
 
-const allowSearch = createRateLimiter(20, 60_000);
-const allowLiveFetch = createRateLimiter(20, 60_000);
+const allowSearchVisitor = createRateLimiter(20, 60_000);
+const allowSearchAll = createRateLimiter(180, 60_000);
+const allowLiveVisitor = createRateLimiter(20, 60_000);
+const allowLiveAll = createRateLimiter(180, 60_000);
 
 function deployVersion(): string {
   return searchCacheVersion(process.env.BIBISARU_BUILD || process.env.CF_PAGES_COMMIT_SHA);
@@ -74,7 +76,7 @@ export async function handleSearch(request: Request, now = Date.now()): Promise<
   }
 
   const ip = visitorKey(request);
-  if (!allowSearch(ip, now)) {
+  if (!withinBudget(allowSearchVisitor, allowSearchAll, ip, now)) {
     return json({ error: messages.rateLimited }, 429, "no-store", { "retry-after": "60" });
   }
 
@@ -109,7 +111,7 @@ export async function handleKeyword(request: Request, now = Date.now()): Promise
     pathname: url.pathname,
     version,
     now: new Date(now),
-    search: allowLiveFetch(`k:${ip}`, now)
+    search: withinBudget(allowLiveVisitor, allowLiveAll, `k:${ip}`, now)
       ? (keyword, limits) => searchPlatforms(keyword, PLATFORM_IDS, fetchers, () => new Date(now), "", limits)
       : undefined,
   });
