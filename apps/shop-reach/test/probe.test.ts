@@ -7,6 +7,7 @@ import { decodeBody } from "../lib/decode-body";
 import {
   beginProbe,
   endProbe,
+  acceptsProbeCall,
   liveProbeEnabled,
   parseProbeBody,
   resetProbeSlots,
@@ -195,6 +196,39 @@ describe("賣場連線測試", () => {
     expect(sameOrigin({ url: "https://shop.example/api/probe", host: "shop.example", forwardedHost: null }, "https://shop.example")).toBe(true);
     expect(sameOrigin({ url: "https://shop.example/api/probe", host: "shop.example", forwardedHost: null }, "https://evil.example")).toBe(false);
     expect(sameOrigin({ url: "https://shop.example/api/probe", host: "shop.example", forwardedHost: null }, "javascript:alert(1)")).toBe(false);
+    expect(
+      sameOrigin(
+        { url: "https://internal.example/api/probe", host: "internal.example", forwardedHost: "shop-reach.apps.grok.bot" },
+        "https://shop-reach.apps.grok.bot",
+      ),
+    ).toBe(true);
+    expect(
+      acceptsProbeCall({
+        site: "same-origin",
+        origin: "https://shop-reach.apps.grok.bot",
+        url: "https://internal.example/api/probe",
+        host: "internal.example",
+        forwardedHost: null,
+      }),
+    ).toBe(true);
+    expect(
+      acceptsProbeCall({
+        site: "cross-site",
+        origin: "https://shop-reach.apps.grok.bot",
+        url: "https://shop-reach.apps.grok.bot/api/probe",
+        host: "shop-reach.apps.grok.bot",
+        forwardedHost: null,
+      }),
+    ).toBe(false);
+    expect(
+      acceptsProbeCall({
+        site: null,
+        origin: null,
+        url: "https://shop-reach.apps.grok.bot/api/probe",
+        host: "shop-reach.apps.grok.bot",
+        forwardedHost: null,
+      }),
+    ).toBe(true);
 
     resetProbeSlots();
     expect(beginProbe("user:1", "coupang", 1_000)).toBe("ok");

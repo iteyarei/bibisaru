@@ -24,6 +24,16 @@ export function parseProbeBody(body: unknown): ProbeBody {
   return { platform: record.platform, keyword };
 }
 
+function hostnameOf(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  try {
+    return new URL(trimmed.includes("://") ? trimmed : `http://${trimmed}`).hostname.toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
 /**
  * A browser form from another site sends that site's Origin. The app host is
  * the Host header the browser used; the platform may rewrite `request.url`.
@@ -40,15 +50,37 @@ export function sameOrigin(
     return false;
   }
   if (originUrl.protocol !== "http:" && originUrl.protocol !== "https:") return false;
-  const candidates = [request.host, request.forwardedHost]
-    .map((value) => value?.split(",")[0]?.trim() ?? "")
-    .filter(Boolean);
-  if (candidates.some((host) => host === originUrl.host || host === originUrl.hostname)) return true;
-  try {
-    return originUrl.origin === new URL(request.url).origin;
-  } catch {
-    return false;
+  const names = new Set<string>();
+  for (const value of [request.host, request.forwardedHost]) {
+    if (!value) continue;
+    for (const part of value.split(",")) {
+      const name = hostnameOf(part);
+      if (name) names.add(name);
+    }
   }
+  try {
+    names.add(new URL(request.url).hostname.toLowerCase());
+  } catch {
+    // The request URL is not needed when a forwarded host already matched.
+  }
+  return names.has(originUrl.hostname.toLowerCase());
+}
+
+/**
+ * The published host may drop the page's custom header. A same-origin fetch is
+ * still the page itself. A cross-site page is refused.
+ */
+export function acceptsProbeCall(input: {
+  site: string | null;
+  origin: string | null;
+  url: string;
+  host: string | null;
+  forwardedHost: string | null;
+}): boolean {
+  const site = (input.site ?? "").trim().toLowerCase();
+  if (site === "cross-site" || site === "same-site") return false;
+  if (site === "same-origin") return true;
+  return sameOrigin(input, input.origin);
 }
 
 const lastSent = new Map<string, number>();

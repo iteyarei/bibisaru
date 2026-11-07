@@ -1,12 +1,10 @@
 import { requireIdentity } from "../../../cursor/identity.js";
-import { beginProbe, endProbe, liveProbeEnabled, parseProbeBody, sameOrigin, type ShopName } from "../../../lib/gate";
+import { acceptsProbeCall, beginProbe, endProbe, liveProbeEnabled, parseProbeBody, type ShopName } from "../../../lib/gate";
 import { probeShop } from "../../../lib/probe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 10;
-
-const HEADER = "x-shop-reach";
 
 function envOf(): Record<string, string | undefined> {
   return (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
@@ -44,16 +42,17 @@ export async function POST(request: Request): Promise<Response> {
   if (identity.kind !== "person" || typeof identity.sub !== "string" || identity.sub.length === 0) {
     return json(held(null, "person_only"), 403);
   }
-  if (request.headers.get(HEADER) !== "1") return json(held(null, "bad_request"), 400);
+  const forwardedHost = [request.headers.get("x-forwarded-host"), request.headers.get("x-original-host")]
+    .filter((value) => value)
+    .join(",");
   if (
-    !sameOrigin(
-      {
-        url: request.url,
-        host: request.headers.get("host"),
-        forwardedHost: request.headers.get("x-forwarded-host"),
-      },
-      request.headers.get("origin"),
-    )
+    !acceptsProbeCall({
+      site: request.headers.get("sec-fetch-site"),
+      origin: request.headers.get("origin"),
+      url: request.url,
+      host: request.headers.get("host"),
+      forwardedHost,
+    })
   ) {
     return json(held(null, "bad_request"), 400);
   }
