@@ -114,15 +114,32 @@ describe("and match with synonyms", () => {
       item("統一來一客"),
       item("一度贊"),
       item("一度讚"),
+      item("維力 真爽 黑胡椒牛肉風味麵"),
+      item("Indomie 營多麵 香蔥雞風味湯麵"),
+      item("味丹 味味A 香辣牛肉湯麵"),
+      item("金車 漢寶 日式極濃豚骨風味"),
+      item("維力 維力炸醬麵"),
       item("白飯"),
+      item("原味麵包"),
+      item("高筋麵粉"),
+      item("義大利麵"),
+      item("涼麵"),
     ];
     expect(filterBySearchTerms(noodles, "泡麵").map((product) => product.title)).toEqual([
       "農心辛拉麵",
       "統一來一客",
       "一度贊",
       "一度讚",
+      "維力 真爽 黑胡椒牛肉風味麵",
+      "Indomie 營多麵 香蔥雞風味湯麵",
+      "味丹 味味A 香辣牛肉湯麵",
+      "金車 漢寶 日式極濃豚骨風味",
+      "維力 維力炸醬麵",
     ]);
+    expect(titleHasEveryTerm("維力 真爽 黑胡椒牛肉風味麵", "泡麵 牛肉")).toBe(true);
+    expect(titleHasEveryTerm("統一來一客", "泡麵 牛肉")).toBe(false);
     expect(titleHasEveryTerm("泡麵", "來一客")).toBe(false);
+    expect(titleHasEveryTerm("統一泡麵", "漢寶")).toBe(false);
     expect(titleHasEveryTerm("冰箱", "電視")).toBe(false);
 
     const visible = prepareResults(

@@ -65,6 +65,14 @@ describe("isRelevantTitle", () => {
   it("rejects an empty title", () => {
     expect(isRelevantTitle("", matchPlan("除濕機"))).toBe(false);
   });
+
+  it("keeps instant-noodle names for 泡麵 and leaves bread and pasta out", () => {
+    const plan = matchPlan("泡麵");
+    expect(isRelevantTitle("維力 維力炸醬麵", plan)).toBe(true);
+    expect(isRelevantTitle("金車 漢寶 日式極濃豚骨風味", plan)).toBe(true);
+    expect(isRelevantTitle("原味麵包", plan)).toBe(false);
+    expect(isRelevantTitle("義大利麵", plan)).toBe(false);
+  });
 });
 
 describe("relevanceRank", () => {

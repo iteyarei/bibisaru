@@ -1,5 +1,5 @@
 import { PLATFORM_IDS } from "./platforms";
-import { searchTokens, tokenForms } from "./synonyms";
+import { searchTokens, tokenForms, tokenMatchKind } from "./synonyms";
 import { normalizeMatchText } from "./text";
 import type { PlatformId, Product } from "./types";
 
@@ -48,7 +48,9 @@ export function matchRank(title: string, plan: MatchPlan): number {
   if (!plan.tokens.length) return 2;
   const hay = compactText(title ?? "");
   if (!hay) return 2;
-  const everyTerm = plan.tokens.every((token) => token.forms.some((form) => hay.includes(form)));
+  const everyTerm = plan.tokens.every(
+    (token) => token.forms.some((form) => hay.includes(form)) || tokenMatchKind(title, token.token) === "category",
+  );
   if (!everyTerm) return 2;
   return plan.phrase && hay.includes(plan.phrase) ? 0 : 1;
 }
