@@ -21,8 +21,10 @@ export function visitorKey(request: Request): string {
 }
 
 /**
- * Both checks have to pass. The shared ceiling still applies when the visitor
- * key changes on every request, so a new address cannot buy a new budget.
+ * Both checks have to pass. A visitor who is already out of their own searches
+ * is turned away before the shared ceiling is touched, so their extra clicks
+ * do not use up the budget left for everyone else. The shared ceiling still
+ * applies when the visitor key changes on every request.
  */
 export function withinBudget(
   allowVisitor: (key: string, now: number) => boolean,
@@ -30,8 +32,8 @@ export function withinBudget(
   visitor: string,
   now: number,
 ): boolean {
-  if (!allowAll("all", now)) return false;
-  return allowVisitor(visitor, now);
+  if (!allowVisitor(visitor, now)) return false;
+  return allowAll("all", now);
 }
 
 function ipAddress(value: string): string | null {

@@ -49,6 +49,14 @@ describe("cursor host routes", () => {
     expect(visitorKey(invented)).toBe(visitorKey(another));
   });
 
+  it("leaves the shared budget alone after that visitor is already out of searches", () => {
+    const allowVisitor = createRateLimiter(1, 60_000);
+    const allowAll = createRateLimiter(2, 60_000);
+    expect(withinBudget(allowVisitor, allowAll, "198.51.100.1", 1_000)).toBe(true);
+    expect(withinBudget(allowVisitor, allowAll, "198.51.100.1", 1_000)).toBe(false);
+    expect(withinBudget(allowVisitor, allowAll, "198.51.100.2", 1_000)).toBe(true);
+  });
+
   it("stops a new visitor key from getting a fresh budget once the shared ceiling is spent", () => {
     const allowVisitor = createRateLimiter(20, 60_000);
     const allowAll = createRateLimiter(2, 60_000);
