@@ -1,7 +1,10 @@
-import { COUPANG_SEARCH_LIMIT, productsFromCoupangSearch } from "../vendor/shared/coupang-api";
-import { cleanTitle, parsePrice } from "../vendor/shared/text";
+import { COUPANG_SEARCH_LIMIT } from "../vendor/shared/coupang-api";
+import { canonicalImageUrl, cleanTitle, parsePrice } from "../vendor/shared/text";
+import type { Product } from "../vendor/shared/types";
 
 const COUPANG_LINK = /(^|\.)coupang\.com$/i;
+/** Taiwan Partners currently returns AppsFlyer links on this host, not coupang.com. */
+const ONELINK_HOST = "coupang.onelink.me";
 
 export interface RowSkips {
   title: number;
@@ -20,7 +23,7 @@ export interface CoupangRows {
 
 const NONE: RowSkips = { title: 0, price: 0, url: 0, duplicate: 0, urlNote: null };
 
-/** Why a successful Coupang payload kept zero products. The kept list still comes from `productsFromCoupangSearch`. */
+/** Why a successful Coupang payload kept zero products. `kept` is `listedCoupangProducts`. */
 export function coupangRows(payload: unknown, kept: number): CoupangRows {
   const list = productData(payload);
   const rawRows = list.length;
@@ -29,16 +32,52 @@ export function coupangRows(payload: unknown, kept: number): CoupangRows {
   return { emptyCause: "rows_unusable", rawRows, skipped: countSkips(list) };
 }
 
-export function coupangKeptCount(payload: unknown): number {
-  return productsFromCoupangSearch(payload)?.length ?? 0;
+/**
+ * Same title and price rules as 比比猴. Also keeps an https link on
+ * `coupang.onelink.me`, which the site parser still rejects.
+ */
+export function listedCoupangProducts(payload: unknown): Product[] | null {
+  const root = payload && typeof payload === "object" && !Array.isArray(payload)
+    ? (payload as { rCode?: unknown })
+    : null;
+  if (!root || String(root.rCode) !== "0") return null;
+  const list = productList(payload);
+  if (!list) return null;
+  const products: Product[] = [];
+  const seen = new Set<string>();
+  for (let index = 0; index < list.length && products.length < COUPANG_SEARCH_LIMIT; index += 1) {
+    const row = asRow(list[index]);
+    const title = cleanTitle(typeof row?.productName === "string" ? row.productName : "");
+    const price = parsePrice(row?.productPrice);
+    const url = usableUrl(row?.productUrl);
+    if (!title || price === null || !url || seen.has(url)) continue;
+    seen.add(url);
+    products.push({
+      platform: "coupang",
+      title,
+      price,
+      image: canonicalImageUrl(typeof row?.productImage === "string" ? row.productImage : ""),
+      url,
+      rank: index,
+    });
+  }
+  return products;
 }
 
 function productData(payload: unknown): unknown[] {
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return [];
+  return productList(payload) ?? [];
+}
+
+function productList(payload: unknown): unknown[] | null {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
   const data = (payload as { data?: unknown }).data;
-  if (!data || typeof data !== "object" || Array.isArray(data)) return [];
+  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
   const list = (data as { productData?: unknown }).productData;
-  return Array.isArray(list) ? list : [];
+  return Array.isArray(list) ? list : null;
+}
+
+function asRow(item: unknown): Record<string, unknown> | null {
+  return item && typeof item === "object" && !Array.isArray(item) ? (item as Record<string, unknown>) : null;
 }
 
 function usableUrl(value: unknown): string | null {
@@ -47,7 +86,8 @@ function usableUrl(value: unknown): string | null {
   if (!raw) return null;
   try {
     const parsed = new URL(raw);
-    if (parsed.protocol !== "https:" || !COUPANG_LINK.test(parsed.hostname)) return null;
+    const host = parsed.hostname.replace(/\.$/, "").toLowerCase();
+    if (parsed.protocol !== "https:" || (host !== ONELINK_HOST && !COUPANG_LINK.test(host))) return null;
     return raw;
   } catch {
     return null;

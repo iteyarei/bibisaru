@@ -159,6 +159,39 @@ describe("賣場連線測試", () => {
     expect(body).not.toContain("coupang-test-secret");
   });
 
+  it("lists a Coupang OneLink product the site parser would drop", async () => {
+    const report = await probeShop("coupang", "耳機", {
+      accessKey: "test-access-key",
+      secretKey: "coupang-test-secret",
+      fetchImpl: async () => Response.json({
+        rCode: "0",
+        data: {
+          productData: [
+            {
+              productName: "藍牙耳機",
+              productPrice: 590,
+              productImage: "https://thumbnail.coupangcdn.com/thumbnails/remote/ear.jpg",
+              productUrl: "https://coupang.onelink.me/example?pid=affiliate&c=earbuds",
+            },
+            {
+              productName: "別的短網址",
+              productPrice: 100,
+              productUrl: "https://evil.onelink.me/example",
+            },
+          ],
+        },
+      }),
+    });
+    expect(report).toMatchObject({ ok: true, parsed: true, count: 1, reason: null, emptyCause: null });
+    expect(report.products[0]).toMatchObject({
+      title: "藍牙耳機",
+      price: 590,
+      url: "https://coupang.onelink.me/example?pid=affiliate&c=earbuds",
+    });
+    expect(JSON.stringify(report)).not.toContain("evil.onelink.me");
+    expect(JSON.stringify(report)).not.toContain("coupang-test-secret");
+  });
+
   it("does not call Coupang when a key is missing, and redacts keys from failures", async () => {
     let calls = 0;
     const missing = await probeShop("coupang", "耳機", {

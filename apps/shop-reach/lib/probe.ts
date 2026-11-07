@@ -7,13 +7,12 @@ import {
   coupangSearchQuery,
   coupangSignedDate,
   coupangSignMessage,
-  productsFromCoupangSearch,
 } from "../vendor/shared/coupang-api";
 import { rakutenProducts, readRakutenItems } from "../vendor/shared/normalize";
 import { rawSearchUrl } from "../vendor/shared/platforms";
 import type { Product } from "../vendor/shared/types";
 import { challengePage } from "./challenge";
-import { coupangRows, type RowSkips } from "./coupang-rows";
+import { coupangRows, listedCoupangProducts, type RowSkips } from "./coupang-rows";
 import { decodeBody } from "./decode-body";
 import type { ShopName } from "./gate";
 import { KEYWORD_MAX } from "./gate";
@@ -182,7 +181,7 @@ async function coupangResult(response: Response, secrets: readonly string[], tes
     const message = typeof root?.rMessage === "string" ? root.rMessage : "";
     return upstream("coupang", response.status, false, null, `rcode_${code}: ${publicText(message, secrets)}`, testedAt);
   }
-  const products = productsFromCoupangSearch(payload);
+  const products = listedCoupangProducts(payload);
   if (!products) return upstream("coupang", response.status, false, null, "parse_error", testedAt);
   const rows = coupangRows(payload, products.length);
   const reason = rows.emptyCause === "no_rows"
