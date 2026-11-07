@@ -18,6 +18,23 @@ import { SITE_ORIGIN } from "../shared/k-slugs";
 import { readMemoryCache, writeMemoryCache } from "./memory-cache";
 import { visitorKey, withinBudget } from "./visitor";
 
+/**
+ * Official public origin for 比比猴 on this host.
+ * Canonical, Open Graph, sitemap, robots, and structured-data URLs use this.
+ * They must not follow the temporary Vercel deployment hostname the proxy
+ * presents as Host / x-forwarded-host. The Cloudflare site keeps SITE_ORIGIN.
+ */
+export const OFFICIAL_ORIGIN = "https://bibisaru.apps.grok.bot";
+
+/** Swap the built-in pages.dev origin for the official host, leaving every other URL alone. */
+export function withOfficialOrigin(html: string): string {
+  return html.replaceAll(SITE_ORIGIN, OFFICIAL_ORIGIN);
+}
+
+/**
+ * Host the proxy connected to. Only the in-memory cache key uses it, so two
+ * deployment hostnames do not share one entry. It is not a public URL.
+ */
 function requestOrigin(request: Request): string {
   const url = new URL(request.url);
   const rawHost = (request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? url.host).split(",")[0]?.trim() ?? "";
@@ -115,7 +132,7 @@ export async function handleKeyword(request: Request, now = Date.now()): Promise
       ? (keyword, limits) => searchPlatforms(keyword, PLATFORM_IDS, fetchers, () => new Date(now), "", limits)
       : undefined,
   });
-  const body = result.body.replaceAll(SITE_ORIGIN, origin);
+  const body = withOfficialOrigin(result.body);
   if (body) {
     writeMemoryCache(cacheKey, {
       status: result.status,
@@ -127,9 +144,8 @@ export async function handleKeyword(request: Request, now = Date.now()): Promise
   return html(body, result.status, result.cacheControl);
 }
 
-export function handleRobots(request: Request): Response {
-  const origin = requestOrigin(request);
-  const body = `User-agent: *\nAllow: /\nDisallow: /api/\n\nSitemap: ${origin}/sitemap.xml\n`;
+export function handleRobots(_request: Request): Response {
+  const body = `User-agent: *\nAllow: /\nDisallow: /api/\n\nSitemap: ${OFFICIAL_ORIGIN}/sitemap.xml\n`;
   return new Response(body, {
     headers: {
       "content-type": "text/plain; charset=utf-8",
@@ -138,8 +154,8 @@ export function handleRobots(request: Request): Response {
   });
 }
 
-export function handleSitemap(request: Request): Response {
-  const body = buildSitemap(requestOrigin(request));
+export function handleSitemap(_request: Request): Response {
+  const body = buildSitemap(OFFICIAL_ORIGIN);
   return new Response(body, {
     headers: {
       "content-type": "application/xml; charset=utf-8",
@@ -148,8 +164,7 @@ export function handleSitemap(request: Request): Response {
   });
 }
 
-export function handleHome(request: Request): Response {
-  const origin = requestOrigin(request);
+export function handleHome(_request: Request): Response {
   let htmlText: string;
   try {
     htmlText = readFileSync(join(process.cwd(), "dist", "index.html"), "utf8");
@@ -159,11 +174,14 @@ export function handleHome(request: Request): Response {
       headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
     });
   }
-  const body = htmlText.replaceAll(SITE_ORIGIN, origin);
-  return html(body, 200, "no-cache");
+  return html(withOfficialOrigin(htmlText), 200, "no-cache");
 }
 
 function html(body: string, status: number, cacheControl: string): Response {
+  // Do not set X-Robots-Tag here. The live public host is fetched through a
+  // Vercel deployment URL, so a host check cannot tell production from preview.
+  // Vercel already sends noindex on that deployment URL; adding another one
+  // would keep the official site out of search even after the platform stops.
   return new Response(body, {
     status,
     headers: {
