@@ -5,8 +5,11 @@ import type { Product } from "./types";
 export const COUPANG_API_ORIGIN = "https://api-gateway.tw.coupang.com";
 export const COUPANG_API_PATH = "/v2/providers/affiliate_open_api/apis/openapi/products/search";
 export const COUPANG_SUB_ID = "bibisaru";
-/** Asked and kept. The Taiwan Partners search has historically answered with fewer than this. */
-export const COUPANG_SEARCH_LIMIT = 24;
+/**
+ * Taiwan Partners rejects anything above 10 with `rcode_400: limit is out of range`,
+ * and that failure drops the whole shop. 10 is the most one search can return.
+ */
+export const COUPANG_SEARCH_LIMIT = 10;
 
 const COUPANG_HOST = /(^|\.)coupang\.com$/i;
 /** Taiwan Partners currently returns affiliate links on this host. */

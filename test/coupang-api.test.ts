@@ -23,8 +23,8 @@ const SIGNATURE_VECTOR = {
   secret: "coupang-test-secret",
   signedDate: "260101T000000Z",
   message:
-    "260101T000000ZGET/v2/providers/affiliate_open_api/apis/openapi/products/searchkeyword=%E9%9B%BB%E9%8D%8B&limit=24&subId=bibisaru",
-  hex: "753651022338c92871380c31724ea9cff3a975697027ad4e9736fe1eeabd04c7",
+    "260101T000000ZGET/v2/providers/affiliate_open_api/apis/openapi/products/searchkeyword=%E9%9B%BB%E9%8D%8B&limit=10&subId=bibisaru",
+  hex: "bcd1e081c3bd24fd345eed65b598086db649bf4ffddb4d36b08d7ac46c01165f",
 };
 
 const ACCESS_KEY = "test-access-key";
@@ -87,7 +87,7 @@ describe("coupang partners signature", () => {
   it("matches the HMAC-SHA256 test vector", async () => {
     expect(coupangSignedDate(new Date("2026-01-01T00:00:00.000Z"))).toBe(SIGNATURE_VECTOR.signedDate);
     const query = coupangSearchQuery("電鍋");
-    expect(query).toBe("keyword=%E9%9B%BB%E9%8D%8B&limit=24&subId=bibisaru");
+    expect(query).toBe("keyword=%E9%9B%BB%E9%8D%8B&limit=10&subId=bibisaru");
     expect(query.includes("?")).toBe(false);
     const message = coupangSignMessage(SIGNATURE_VECTOR.signedDate, query);
     expect(message).toBe(SIGNATURE_VECTOR.message);
@@ -99,7 +99,7 @@ describe("coupang partners signature", () => {
 
   it("encodes a space in the keyword the same way it is sent", () => {
     expect(coupangSearchQuery("電 鍋")).toBe(
-      `keyword=${encodeURIComponent("電 鍋")}&limit=24&subId=bibisaru`,
+      `keyword=${encodeURIComponent("電 鍋")}&limit=10&subId=bibisaru`,
     );
   });
 });
@@ -134,7 +134,7 @@ describe("coupang partners search", () => {
     expect(seen).toHaveLength(1);
     const call = seen[0];
     expect(call?.url).toBe(
-      `${COUPANG_API_ORIGIN}${COUPANG_API_PATH}?keyword=${encodeURIComponent("電鍋")}&limit=24&subId=bibisaru`,
+      `${COUPANG_API_ORIGIN}${COUPANG_API_PATH}?keyword=${encodeURIComponent("電鍋")}&limit=10&subId=bibisaru`,
     );
     expect(call?.url.includes(ACCESS_KEY)).toBe(false);
     expect(call?.url.includes(SIGNATURE_VECTOR.secret)).toBe(false);
@@ -205,15 +205,15 @@ describe("coupang partners search", () => {
     })).toEqual([]);
   });
 
-  it("keeps 24 partner rows and drops the 25th", () => {
-    const productData = Array.from({ length: 25 }, (_, index) => ({
+  it("keeps 10 partner rows and drops the 11th", () => {
+    const productData = Array.from({ length: 11 }, (_, index) => ({
       productName: `耳機 ${index + 1}`,
       productPrice: 100 + index,
       productUrl: `https://coupang.onelink.me/example?pid=${index + 1}`,
     }));
     const products = productsFromCoupangSearch({ rCode: "0", data: { productData } });
-    expect(products).toHaveLength(24);
-    expect(products?.[23]?.title).toBe("耳機 24");
+    expect(products).toHaveLength(10);
+    expect(products?.[9]?.title).toBe("耳機 10");
   });
 
   it("reports http status, a clipped rMessage, and exceptions without key values", async () => {
