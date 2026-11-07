@@ -16,6 +16,7 @@ interface RowSkips {
   price: number;
   url: number;
   duplicate: number;
+  urlNote: string | null;
 }
 
 interface ProbeReport {
@@ -236,7 +237,8 @@ function shownSkips(value: unknown): RowSkips | null {
   if (!value || typeof value !== "object") return null;
   const row = value as Record<string, unknown>;
   const count = (name: string) => (typeof row[name] === "number" && Number.isFinite(row[name]) ? (row[name] as number) : 0);
-  return { title: count("title"), price: count("price"), url: count("url"), duplicate: count("duplicate") };
+  const urlNote = typeof row.urlNote === "string" && row.urlNote.length <= 300 ? row.urlNote : null;
+  return { title: count("title"), price: count("price"), url: count("url"), duplicate: count("duplicate"), urlNote };
 }
 
 function formatTime(iso: string): string {
@@ -260,7 +262,8 @@ function explain(reason: string, shop: string, report: ProbeReport): string {
   if (reason === "empty_rows_unusable") {
     const skipped = report.skipped;
     if (!skipped || report.rawRows === null) return `${shop}有回傳商品列，但沒有一列可以列出。`;
-    return `${shop}回了 ${report.rawRows} 列，沒有一列同時有品名、售價和可用網址。缺品名 ${skipped.title}、缺售價 ${skipped.price}、網址不能用 ${skipped.url}、重複 ${skipped.duplicate}。`;
+    const detail = skipped.urlNote ? skipped.urlNote : "";
+    return `${shop}回了 ${report.rawRows} 列，沒有一列同時有品名、售價和可用網址。缺品名 ${skipped.title}、缺售價 ${skipped.price}、網址不能用 ${skipped.url}、重複 ${skipped.duplicate}。${detail}`;
   }
   if (reason.startsWith("missing_keys")) return `酷澎金鑰尚未設定。${reason}`;
   const known: Record<string, string> = {

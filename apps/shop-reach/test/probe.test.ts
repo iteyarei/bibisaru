@@ -121,7 +121,42 @@ describe("賣場連線測試", () => {
       rawRows: 3,
       skipped: { title: 1, price: 1, url: 1, duplicate: 0 },
     });
+    expect(unusable.skipped?.urlNote).toContain("evil.example");
     expect(JSON.stringify(unusable)).not.toContain("coupang-test-secret");
+  });
+
+  it("names the Coupang link host without the path or query", async () => {
+    const keys = { accessKey: "test-access-key", secretKey: "coupang-test-secret" };
+    const report = await probeShop("coupang", "耳機", {
+      ...keys,
+      fetchImpl: async () => Response.json({
+        rCode: "0",
+        data: {
+          productData: [
+            {
+              productName: "耳機",
+              productPrice: 100,
+              productUrl: "https://www.coupang.com.tw/products/99?itemId=7&lptag=AF6766993",
+              landingUrl: "https://link.tw.coupang.com/re2/AFFSDP?pageKey=99&lptag=AF6766993",
+            },
+            {
+              productName: "另一個",
+              productPrice: 80,
+              productUrl: "",
+            },
+          ],
+        },
+      }),
+    });
+    expect(report.skipped?.urlNote).toContain("www.coupang.com.tw");
+    expect(report.skipped?.urlNote).toContain("productUrl 是空的 1");
+    expect(report.skipped?.urlNote).toContain("landingUrl");
+    const body = JSON.stringify(report);
+    expect(body).not.toContain("itemId");
+    expect(body).not.toContain("lptag");
+    expect(body).not.toContain("AFF6766993");
+    expect(body).not.toContain("/products/");
+    expect(body).not.toContain("coupang-test-secret");
   });
 
   it("does not call Coupang when a key is missing, and redacts keys from failures", async () => {
