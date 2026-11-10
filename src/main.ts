@@ -16,11 +16,15 @@ import { bindClearButton } from "./clear-field";
 import { applyFestivalMascot } from "./festival-mascot";
 import { bindHotChipLoading } from "./hot-loading";
 import { bindHotPopClose, createHotPop } from "./hot-pop";
-import { defaultPrefs, loadPrefs, savePrefs, type Prefs } from "./prefs";
+import { bindFreshOnRestore, defaultPrefs, forgetSavedPrefs, resetPrefs, type Prefs } from "./prefs";
+import { syncNewSiteNotice } from "./new-site";
 import { renderNotices, renderStage } from "./render";
 import { BUILD_VERSION } from "./version";
 
-const prefs: Prefs = loadPrefs();
+// Every visit starts from the default filters. Nothing is remembered between
+// visits, and whatever an older build saved is deleted here.
+forgetSavedPrefs();
+const prefs: Prefs = defaultPrefs();
 let response: SearchResponse | null = null;
 let query = "";
 let loading = false;
@@ -46,6 +50,7 @@ const priceMinInput = document.querySelector<HTMLInputElement>("#price-min")!;
 const priceMaxInput = document.querySelector<HTMLInputElement>("#price-max")!;
 const noticeRoot = document.querySelector<HTMLElement>("#notices")!;
 const stage = document.querySelector<HTMLElement>("#stage")!;
+const newSiteNotice = document.querySelector<HTMLElement>("#new-site");
 
 function enabledIds(): PlatformId[] {
   return PLATFORM_IDS.filter((id) => prefs.platforms[id]);
@@ -128,6 +133,7 @@ function render(): void {
     onSimilar: searchSimilar,
   });
   searchButton.setAttribute("aria-busy", loading ? "true" : "false");
+  syncNewSiteNotice(newSiteNotice, location.hostname, query);
 }
 
 function syncPriceInput(input: HTMLInputElement, bound: number | null): void {
@@ -206,7 +212,6 @@ function commitExclude(): void {
   prefs.preset = PRESET_EXCLUDE.every((word) => prefs.exclude.includes(word));
   excludeInput.value = "";
   syncExcludeClear();
-  savePrefs(prefs);
   syncExclude();
   render();
 }
@@ -220,7 +225,6 @@ function resetFilters(): void {
   prefs.platforms = fresh.platforms;
   prefs.priceMin = null;
   prefs.priceMax = null;
-  savePrefs(prefs);
   syncExclude();
   syncPlatforms();
   sortSelect.value = prefs.sort;
@@ -235,7 +239,6 @@ function searchSimilar(title: string): void {
   if (!next) return;
   commitExclude();
   for (const id of PLATFORM_IDS) prefs.platforms[id] = true;
-  savePrefs(prefs);
   syncPlatforms();
   searchInput.value = next;
   syncSearchClear();
@@ -263,7 +266,6 @@ excludeInput.addEventListener("keydown", (event) => {
   } else if (event.key === "Backspace" && excludeInput.value === "" && prefs.exclude.length) {
     prefs.exclude = prefs.exclude.slice(0, -1);
     prefs.preset = PRESET_EXCLUDE.every((word) => prefs.exclude.includes(word));
-    savePrefs(prefs);
     syncExclude();
     render();
   }
@@ -288,7 +290,6 @@ document.querySelector("#exclude")!.addEventListener("click", (event) => {
   const index = Number(button.dataset.removeIndex);
   prefs.exclude = prefs.exclude.filter((_word, wordIndex) => wordIndex !== index);
   prefs.preset = PRESET_EXCLUDE.every((word) => prefs.exclude.includes(word));
-  savePrefs(prefs);
   syncExclude();
   render();
 });
@@ -301,7 +302,6 @@ presetButton.addEventListener("click", () => {
     prefs.exclude = addKeywords(prefs.exclude, PRESET_EXCLUDE);
     prefs.preset = true;
   }
-  savePrefs(prefs);
   syncExclude();
   render();
 });
@@ -312,7 +312,6 @@ platformRoot.addEventListener("click", (event) => {
   const id = button.dataset.platform as PlatformId;
   const turningOn = !prefs.platforms[id];
   prefs.platforms[id] = turningOn;
-  savePrefs(prefs);
   syncPlatforms();
   const alreadyFetched = response?.platforms.some((platform) => platform.id === id) ?? false;
   if (turningOn && query && !alreadyFetched) void runSearch(query, false);
@@ -321,14 +320,12 @@ platformRoot.addEventListener("click", (event) => {
 
 sortSelect.addEventListener("change", () => {
   prefs.sort = sortSelect.value as SortMode;
-  savePrefs(prefs);
   render();
 });
 
 function onPriceInput(): void {
   prefs.priceMin = parsePriceBound(priceMinInput.value);
   prefs.priceMax = parsePriceBound(priceMaxInput.value);
-  savePrefs(prefs);
   render();
 }
 
@@ -426,15 +423,55 @@ renderHotKeywords();
 renderPlatforms();
 // HTML 寫死平常版吉祥物，這裡才依當天節慶換圖（沒有節慶或還沒放圖就原封不動）。
 applyFestivalMascot();
-syncExclude();
-sortSelect.value = prefs.sort;
-priceMinInput.value = prefs.priceMin === null ? "" : String(prefs.priceMin);
-priceMaxInput.value = prefs.priceMax === null ? "" : String(prefs.priceMax);
-render();
 
-const initial = new URLSearchParams(location.search).get("q");
-if (initial && normalizeQuery(initial)) {
-  searchInput.value = initial;
-  syncSearchClear();
-  void runSearch(initial, false);
+/**
+ * Puts every box back to the default filters. Browsers may refill form fields
+ * on their own (form restore after a reload or a restored tab), so the fields
+ * are written explicitly instead of trusting what the HTML parser left there.
+ */
+function showFreshFilters(): void {
+  excludeInput.value = "";
+  syncExcludeClear();
+  syncExclude();
+  syncPlatforms();
+  sortSelect.value = prefs.sort;
+  priceMinInput.value = prefs.priceMin === null ? "" : String(prefs.priceMin);
+  priceMaxInput.value = prefs.priceMax === null ? "" : String(prefs.priceMax);
 }
+
+/** The keyword in the address bar, from a shared link, a keyword page or history. */
+function urlQuery(): string {
+  const value = new URLSearchParams(location.search).get("q");
+  return value && normalizeQuery(value) ? value : "";
+}
+
+showFreshFilters();
+const initial = urlQuery();
+searchInput.value = initial;
+syncSearchClear();
+render();
+if (initial) void runSearch(initial, false);
+
+// Coming back from the back/forward cache would otherwise show the old filters
+// exactly as they were left. Reset them; the keyword in the address bar still
+// counts, so its results are fetched again with all platforms on.
+bindFreshOnRestore(() => {
+  const before = enabledIds().join(",");
+  resetPrefs(prefs);
+  showFreshFilters();
+  const next = urlQuery();
+  searchInput.value = next;
+  syncSearchClear();
+  if (next && (next !== query || enabledIds().join(",") !== before || !response)) {
+    void runSearch(next, false);
+    return;
+  }
+  if (!next) {
+    query = "";
+    response = null;
+    error = null;
+    loading = false;
+    document.title = messages.documentTitle;
+  }
+  render();
+});
