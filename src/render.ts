@@ -109,7 +109,7 @@ export function renderStage(
 
   if (!view.searched) {
     const intro = el("div", "empty");
-    intro.append(mascotImage(168), el("p", "intro-title", messages.introTitle), el("p", undefined, messages.introBody));
+    intro.append(mascotImage(168), el("p", "intro-title", messages.introTitle), el("p", "intro-body", messages.introBody));
     root.append(intro);
     return;
   }
