@@ -1,9 +1,12 @@
-import { addKeywords, parsePriceBound } from "../shared/filter";
-import { PRESET_EXCLUDE } from "../shared/i18n";
 import { PLATFORM_IDS } from "../shared/platforms";
 import type { PlatformId, SortMode } from "../shared/types";
 
-const STORAGE_KEY = "bibisaru.prefs.v1";
+/**
+ * Key older builds saved filters under. Filters are no longer remembered: every
+ * time the page is opened it starts from the defaults. The key is only kept so
+ * the value an older build left behind can be wiped.
+ */
+export const LEGACY_STORAGE_KEY = "bibisaru.prefs.v1";
 
 export interface Prefs {
   platforms: Record<PlatformId, boolean>;
@@ -14,6 +17,7 @@ export interface Prefs {
   priceMax: number | null;
 }
 
+/** All platforms on, no excluded words, cheapest first, no price range. */
 export function defaultPrefs(): Prefs {
   return {
     platforms: Object.fromEntries(PLATFORM_IDS.map((id) => [id, true])) as Record<PlatformId, boolean>,
@@ -25,46 +29,53 @@ export function defaultPrefs(): Prefs {
   };
 }
 
-function storedBound(value: unknown): number | null {
-  return typeof value === "number" ? parsePriceBound(String(value)) : null;
+/** The part of Storage this module touches. */
+export interface RemovableStorage {
+  removeItem(key: string): void;
 }
 
-function presetComplete(exclude: readonly string[]): boolean {
-  return PRESET_EXCLUDE.every((word) => exclude.includes(word));
-}
-
-export function loadPrefs(): Prefs {
-  const prefs = defaultPrefs();
+function browserStorage(): RemovableStorage | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return prefs;
-    const data = JSON.parse(raw) as Partial<Prefs>;
-    const stored = data.platforms;
-    if (stored && typeof stored === "object") {
-      for (const id of PLATFORM_IDS) {
-        if (typeof stored[id] === "boolean") prefs.platforms[id] = stored[id];
-      }
-    }
-    if (Array.isArray(data.exclude)) {
-      prefs.exclude = addKeywords(
-        [],
-        data.exclude.filter((item): item is string => typeof item === "string"),
-      );
-    }
-    if (data.sort === "price-asc" || data.sort === "price-desc" || data.sort === "relevance") {
-      prefs.sort = data.sort;
-    }
-    prefs.preset = data.preset === true && presetComplete(prefs.exclude);
-    prefs.priceMin = storedBound(data.priceMin);
-    prefs.priceMax = storedBound(data.priceMax);
-    return prefs;
+    return typeof localStorage === "undefined" ? null : localStorage;
   } catch {
-    return defaultPrefs();
+    // Some privacy modes throw on the mere access.
+    return null;
   }
 }
 
-export function savePrefs(prefs: Prefs): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+/**
+ * Deletes the filters an older build saved (platform switches, excluded words,
+ * sort, price range), so a returning visitor also starts clean. Never throws.
+ */
+export function forgetSavedPrefs(storage: RemovableStorage | null = browserStorage()): void {
+  try {
+    storage?.removeItem(LEGACY_STORAGE_KEY);
+  } catch {
+    // Blocked storage has nothing of ours to delete.
+  }
 }
 
-export { presetComplete };
+/** Puts every filter back to its default, in place, so references stay valid. */
+export function resetPrefs(prefs: Prefs): void {
+  Object.assign(prefs, defaultPrefs());
+}
+
+/** The only part of a pageshow event we read. */
+export interface RestoreEvent {
+  persisted?: boolean;
+}
+
+/**
+ * Calls `onRestore` when the browser shows the page from its back/forward cache
+ * (or a tab restored from memory), which would otherwise bring the old filters
+ * back exactly as they were left. A normal first load is left alone.
+ */
+export function bindFreshOnRestore(
+  onRestore: () => void,
+  events: { addEventListener(type: string, listener: (event: RestoreEvent) => void): void } | null =
+    typeof window === "undefined" ? null : window,
+): void {
+  events?.addEventListener("pageshow", (event) => {
+    if (event?.persisted === true) onRestore();
+  });
+}

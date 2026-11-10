@@ -764,3 +764,36 @@ footer p { margin: 0; }
   .hot-chip { padding: 5px 9px; font-size: 13px; }
   .hot-pop-close { top: 2px; right: 2px; }
 }
+
+/* Old-site notice: only visible on bibisaru.pages.dev (see src/new-site.ts). */
+.new-site {
+  margin-top: 24px;
+  padding: 16px;
+  border: 2px solid var(--teal);
+  border-radius: 14px;
+  background: var(--card);
+  text-align: center;
+}
+.new-site[hidden] { display: none; }
+.new-site p { margin: 0; }
+.new-site-title {
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 800;
+}
+.new-site-text {
+  margin-top: 6px !important;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.new-site-go {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 10px 20px;
+  border-radius: 999px;
+  background: var(--teal);
+  color: var(--ink);
+  font-weight: 800;
+  text-decoration: none;
+}
+.new-site-go:hover { filter: brightness(1.05); }

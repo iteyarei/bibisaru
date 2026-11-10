@@ -50,7 +50,7 @@
     </header>
     <main class="wrap">
       <div class="search-row">
-        <form id="search-form" action="/" method="get" role="search">
+        <form id="search-form" action="/" method="get" role="search" autocomplete="off">
           <label class="sr" for="q">關鍵字</label>
           <div class="search">
             <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -85,7 +85,7 @@
       <p class="search-hint">多個關鍵字可用空格分開，全部符合的商品才會顯示</p>
       <p class="hot-status" id="hot-status" role="status" aria-live="polite" hidden></p>
 
-      <form class="ex" id="exclude" action="/" method="get">
+      <form class="ex" id="exclude" action="/" method="get" autocomplete="off">
         <span class="sr" id="exclude-label">排除關鍵字</span>
         <div class="chips" id="chips"></div>
         <input id="exclude-input" type="text" maxlength="20" enterkeyhint="done" placeholder="不想看到的字，例如：二手" autocomplete="off" aria-labelledby="exclude-label" />
@@ -105,16 +105,16 @@
         </div>
         <div class="bar-right">
           <label class="sr" for="sort">排序</label>
-          <select id="sort" class="sort">
+          <select id="sort" class="sort" autocomplete="off">
             <option value="price-asc">價格 低→高</option>
             <option value="price-desc">價格 高→低</option>
             <option value="relevance">相關度</option>
           </select>
           <div class="range" role="group" aria-label="價格範圍">
-            <input id="price-min" type="number" inputmode="numeric" min="0" step="1" placeholder="最低" aria-label="最低價格" />
+            <input id="price-min" type="number" autocomplete="off" inputmode="numeric" min="0" step="1" placeholder="最低" aria-label="最低價格" />
             <span>元</span>
             <span class="tilde" aria-hidden="true">~</span>
-            <input id="price-max" type="number" inputmode="numeric" min="0" step="1" placeholder="最高" aria-label="最高價格" />
+            <input id="price-max" type="number" autocomplete="off" inputmode="numeric" min="0" step="1" placeholder="最高" aria-label="最高價格" />
             <span>元</span>
           </div>
         </div>
@@ -127,6 +127,12 @@
           <p>momo、PChome、Yahoo 奇摩、酷澎、蝦皮、全聯、東森、樂天、露天。沒有廣告。</p>
         </div>
       </div>
+      <!-- Shown only on the old Cloudflare Pages host; src/new-site.ts decides. -->
+      <aside class="new-site" id="new-site" aria-labelledby="new-site-title" hidden>
+        <p class="new-site-title" id="new-site-title">比比猴新站上線囉！</p>
+        <p class="new-site-text">新站可以比較的平台比較多，像酷澎的商品在新站也能直接比價，也可以到新站使用喔！</p>
+        <a class="new-site-go" data-new-site-link href="https://bibisaru.apps.grok.bot/">前往比比猴新站 →</a>
+      </aside>
       <footer>
         <p>價格與庫存以各購物平台頁面為準。比比猴不販售商品，也沒有置頂廣告。</p>
         <p>搜尋結果為各平台搜尋的前幾筆，非該站全部商品。</p>
