@@ -83,6 +83,12 @@
         </form>
       </div>
       <p class="search-hint">多個關鍵字可用空格分開，全部符合的商品才會顯示</p>
+      <!-- Shown only on the old Cloudflare Pages host; src/new-site.ts decides. -->
+      <aside class="new-site" id="new-site" aria-labelledby="new-site-title" hidden>
+        <p class="new-site-title" id="new-site-title">比比猴新站上線囉！</p>
+        <p class="new-site-text">新站可以比較的平台比較多，像酷澎的商品在新站也能直接比價，也可以到新站使用喔！</p>
+        <a class="new-site-go" data-new-site-link href="https://bibisaru.apps.grok.bot/">前往比比猴新站 →</a>
+      </aside>
       <p class="hot-status" id="hot-status" role="status" aria-live="polite" hidden></p>
 
       <form class="ex" id="exclude" action="/" method="get" autocomplete="off">
@@ -124,15 +130,9 @@
         <div class="empty">
           <img src="/mascot.png" alt="" width="168" height="168" data-mascot />
           <p class="intro-title">輸入關鍵字，一次比較各家價格</p>
-          <p>momo、PChome、Yahoo 奇摩、酷澎、蝦皮、全聯、東森、樂天、露天。沒有廣告。</p>
+          <p class="intro-body">momo、PChome、Yahoo 奇摩、酷澎、蝦皮、全聯、東森、樂天、露天。沒有廣告。</p>
         </div>
       </div>
-      <!-- Shown only on the old Cloudflare Pages host; src/new-site.ts decides. -->
-      <aside class="new-site" id="new-site" aria-labelledby="new-site-title" hidden>
-        <p class="new-site-title" id="new-site-title">比比猴新站上線囉！</p>
-        <p class="new-site-text">新站可以比較的平台比較多，像酷澎的商品在新站也能直接比價，也可以到新站使用喔！</p>
-        <a class="new-site-go" data-new-site-link href="https://bibisaru.apps.grok.bot/">前往比比猴新站 →</a>
-      </aside>
       <footer>
         <p>價格與庫存以各購物平台頁面為準。比比猴不販售商品，也沒有置頂廣告。</p>
         <p>搜尋結果為各平台搜尋的前幾筆，非該站全部商品。</p>

@@ -21,6 +21,8 @@ export function syncNewSiteNotice(root: HTMLElement | null, hostname: string, qu
   if (!root) return;
   const show = isOldSiteHost(hostname);
   root.hidden = !show;
+  // The old site hides the platform list under the mascot; the notice replaces it.
+  root.ownerDocument?.documentElement?.classList.toggle("old-site", show);
   if (!show) return;
   const link = root.querySelector<HTMLAnchorElement>("a[data-new-site-link]");
   if (link) link.href = newSiteUrl(query);

@@ -39,11 +39,14 @@ describe("new site link", () => {
 describe("syncNewSiteNotice", () => {
   function fakeNotice() {
     const link = { href: "https://bibisaru.apps.grok.bot/" };
+    const classes = new Set<string>();
+    const classList = { toggle: (name: string, on: boolean) => (on ? classes.add(name) : classes.delete(name)) };
     const root = {
       hidden: true,
+      ownerDocument: { documentElement: { classList } },
       querySelector: (selector: string) => (selector === "a[data-new-site-link]" ? link : null),
     };
-    return { root: root as unknown as HTMLElement, link, state: root };
+    return { root: root as unknown as HTMLElement, link, state: root, classes };
   }
 
   it("shows the notice on the old host with the keyword in the link", () => {
@@ -51,6 +54,7 @@ describe("syncNewSiteNotice", () => {
     syncNewSiteNotice(notice.root, "bibisaru.pages.dev", "電鍋");
     expect(notice.state.hidden).toBe(false);
     expect(notice.link.href).toBe(`https://bibisaru.apps.grok.bot/?q=${encodeURIComponent("電鍋")}`);
+    expect(notice.classes.has("old-site")).toBe(true);
   });
 
   it("keeps it hidden on the new host", () => {
@@ -58,6 +62,7 @@ describe("syncNewSiteNotice", () => {
     notice.state.hidden = false;
     syncNewSiteNotice(notice.root, "bibisaru.apps.grok.bot", "電鍋");
     expect(notice.state.hidden).toBe(true);
+    expect(notice.classes.has("old-site")).toBe(false);
     expect(notice.link.href).toBe("https://bibisaru.apps.grok.bot/");
   });
 
@@ -69,11 +74,12 @@ describe("syncNewSiteNotice", () => {
 describe("homepage notice markup", () => {
   const html = readFileSync("index.html", "utf8");
 
-  it("is hidden by default and sits before the footer", () => {
+  it("is hidden by default and sits right under the search box", () => {
     const aside = html.match(/<aside class="new-site" id="new-site"[^>]*>/)?.[0] ?? "";
     expect(aside).toContain("hidden");
-    expect(html.indexOf('id="new-site"')).toBeLessThan(html.indexOf("<footer>"));
-    expect(html.indexOf('id="new-site"')).toBeGreaterThan(html.indexOf('id="stage"'));
+    expect(html.indexOf('id="new-site"')).toBeGreaterThan(html.indexOf('class="search-hint"'));
+    expect(html.indexOf('id="new-site"')).toBeLessThan(html.indexOf('id="exclude"'));
+    expect(html).toContain('class="intro-body"');
   });
 
   it("names a platform only the new site can list and links there", () => {
