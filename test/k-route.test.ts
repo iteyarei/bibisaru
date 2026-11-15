@@ -72,16 +72,16 @@ describe("GET /k/<slug>/", () => {
 
   it("does not search at all when the caller passes no budget", async () => {
     const search = vi.fn(async (query: string) => body(query, [1_000]));
-    const result = await handleKPath({ pathname: "/k/diandongyashua/", now: NOW });
+    const result = await handleKPath({ pathname: "/k/saotuojiqiren/", now: NOW });
     expect(search).not.toHaveBeenCalled();
     expect(result.status).toBe(200);
-    expect(result.body).toContain("電動牙刷 比價");
+    expect(result.body).toContain("掃拖機器人 比價");
     expect(result.body).toContain("各賣場這次沒回傳商品");
   });
 
   it("honours a body with no products", async () => {
     const result = await handleKPath({
-      pathname: "/k/diandongyashua/",
+      pathname: "/k/saotuojiqiren/",
       now: NOW,
       search: async (query) =>
         body(query, [], [
@@ -99,13 +99,13 @@ describe("GET /k/<slug>/", () => {
       calls += 1;
       return body(query, [100 + calls]);
     };
-    await handleKPath({ pathname: "/k/xiyijing/", now: NOW, search });
-    const second = await handleKPath({ pathname: "/k/xiyijing/", now: NOW, search });
+    await handleKPath({ pathname: "/k/dianretan/", now: NOW, search });
+    const second = await handleKPath({ pathname: "/k/dianretan/", now: NOW, search });
     expect(calls).toBe(1);
     expect(second.body).toContain("NT$101");
 
     // A different deploy id must not read the old build's prices.
-    await handleKPath({ pathname: "/k/xiyijing/", now: NOW, version: "abc1234", search });
+    await handleKPath({ pathname: "/k/dianretan/", now: NOW, version: "abc1234", search });
     expect(calls).toBe(2);
   });
 
